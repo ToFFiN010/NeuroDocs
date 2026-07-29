@@ -402,7 +402,7 @@ def home():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeuroDocs AI — Next-Gen Code Documentation Generator</title>
-    <meta name="description" content="Transform source code into high-grade developer documentation instantly using Gemini AI. Export to PDF, DOCX, Markdown & ZIP.">
+    <meta name="description" content="Transform source code into high-grade developer documentation instantly using Gemini AI with Voice Explanation. Export to PDF, DOCX, Markdown & ZIP.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -448,7 +448,6 @@ def home():
             background-attachment: fixed;
         }
 
-        /* Ambient Top Glow Line */
         .ambient-bar {
             height: 3px;
             width: 100%;
@@ -456,7 +455,6 @@ def home():
             box-shadow: 0 0 12px var(--primary-cyan);
         }
 
-        /* Header Navigation */
         header {
             background: rgba(9, 13, 22, 0.85);
             backdrop-filter: blur(20px);
@@ -496,7 +494,6 @@ def home():
             font-size: 1.4rem;
             color: white;
             box-shadow: 0 0 20px var(--primary-glow);
-            position: relative;
         }
 
         .brand-text h1 {
@@ -521,7 +518,6 @@ def home():
             flex-wrap: wrap;
         }
 
-        /* Sleek Control Pills */
         .ctrl-pill {
             background: rgba(15, 23, 42, 0.9);
             border: 1px solid var(--border-subtle);
@@ -558,7 +554,6 @@ def home():
             color: white;
         }
 
-        /* Pulsing Key Status Badge Button */
         .key-badge-btn {
             background: rgba(15, 23, 42, 0.9);
             border: 1px solid var(--border-subtle);
@@ -606,7 +601,6 @@ def home():
             100% { opacity: 0.4; transform: scale(0.9); }
         }
 
-        /* Modal Overlay & Card */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -638,12 +632,9 @@ def home():
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px var(--primary-glow);
             transform: scale(0.95);
             transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            position: relative;
         }
 
-        .modal-overlay.open .modal-card {
-            transform: scale(1);
-        }
+        .modal-overlay.open .modal-card { transform: scale(1); }
 
         .modal-header {
             display: flex;
@@ -682,7 +673,6 @@ def home():
             align-items: center;
             gap: 0.75rem;
             margin: 1rem 0;
-            transition: border-color 0.2s;
         }
 
         .key-input-box:focus-within {
@@ -700,11 +690,7 @@ def home():
             outline: none;
         }
 
-        .eye-toggle {
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: color 0.2s;
-        }
+        .eye-toggle { color: var(--text-muted); cursor: pointer; transition: color 0.2s; }
         .eye-toggle:hover { color: var(--primary-cyan); }
 
         .info-callout {
@@ -718,18 +704,10 @@ def home():
             margin-bottom: 1.5rem;
         }
 
-        .info-callout a {
-            color: var(--primary-cyan);
-            text-decoration: none;
-            font-weight: 600;
-        }
+        .info-callout a { color: var(--primary-cyan); text-decoration: none; font-weight: 600; }
 
-        .modal-actions {
-            display: flex;
-            gap: 0.75rem;
-        }
+        .modal-actions { display: flex; gap: 0.75rem; }
 
-        /* Buttons */
         .btn {
             border: none;
             border-radius: 12px;
@@ -768,7 +746,6 @@ def home():
             border-color: var(--text-muted);
         }
 
-        /* Main Workspace Grid */
         main {
             max-width: 1440px;
             width: 100%;
@@ -780,11 +757,8 @@ def home():
             gap: 1.75rem;
         }
 
-        @media (max-width: 1024px) {
-            main { grid-template-columns: 1fr; }
-        }
+        @media (max-width: 1024px) { main { grid-template-columns: 1fr; } }
 
-        /* Panel Cards */
         .workspace-panel {
             background: var(--bg-card);
             backdrop-filter: blur(20px);
@@ -796,7 +770,6 @@ def home():
             flex-direction: column;
             gap: 1.25rem;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-            transition: border-color 0.3s;
         }
 
         .panel-top {
@@ -818,7 +791,6 @@ def home():
 
         .panel-heading i { color: var(--primary-cyan); }
 
-        /* Drag & Drop Upload Zone */
         .drop-zone {
             border: 2px dashed rgba(56, 189, 248, 0.25);
             background: rgba(9, 13, 22, 0.6);
@@ -826,7 +798,7 @@ def home():
             padding: 1.5rem;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s;
         }
 
         .drop-zone:hover, .drop-zone.drag-active {
@@ -840,19 +812,10 @@ def home():
             color: var(--primary-cyan);
             margin-bottom: 0.6rem;
             display: inline-block;
-            transition: transform 0.3s;
         }
-
-        .drop-zone:hover i { transform: translateY(-4px); }
 
         .drop-zone p { font-size: 0.92rem; color: var(--text-body); }
         .drop-zone span { color: var(--primary-cyan); font-weight: 600; }
-
-        /* Code Editor */
-        .editor-wrap {
-            position: relative;
-            flex: 1;
-        }
 
         textarea.code-area {
             width: 100%;
@@ -867,7 +830,6 @@ def home():
             line-height: 1.6;
             outline: none;
             resize: vertical;
-            transition: all 0.25s;
         }
 
         textarea.code-area:focus {
@@ -875,13 +837,11 @@ def home():
             box-shadow: 0 0 0 2px var(--primary-glow);
         }
 
-        /* Large Generate Action Button */
         .btn-generate {
             width: 100%;
             padding: 1rem;
             font-size: 1.05rem;
             font-weight: 700;
-            letter-spacing: 0.01em;
             border-radius: var(--radius-md);
             background: linear-gradient(135deg, var(--primary-cyan), var(--accent-purple));
             color: white;
@@ -893,8 +853,6 @@ def home():
             gap: 0.75rem;
             box-shadow: 0 6px 25px var(--primary-glow);
             transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
         }
 
         .btn-generate:hover {
@@ -903,13 +861,101 @@ def home():
             filter: brightness(1.15);
         }
 
-        .btn-generate:disabled {
-            opacity: 0.65;
-            cursor: not-allowed;
-            transform: none;
+        .btn-generate:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+
+        /* Voice Explanation Audio Control Bar */
+        .voice-control-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(9, 13, 22, 0.85);
+            border: 1px solid var(--border-glow);
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
         }
 
-        /* Output Tabs & Box */
+        .btn-voice {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+            color: white;
+            border: none;
+            padding: 0.45rem 1rem;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.25s;
+            box-shadow: 0 0 14px rgba(244, 114, 182, 0.3);
+        }
+
+        .btn-voice:hover {
+            filter: brightness(1.15);
+            transform: translateY(-1px);
+        }
+
+        .btn-voice-stop {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+            padding: 0.45rem 0.7rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-voice-stop:hover { background: rgba(239, 68, 68, 0.3); }
+
+        .voice-rate-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: var(--editor-bg);
+            padding: 0.25rem 0.6rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .voice-rate-wrap select {
+            background: transparent;
+            border: none;
+            color: var(--text-heading);
+            font-size: 0.82rem;
+            font-family: inherit;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .voice-equalizer {
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+            height: 18px;
+            margin-left: auto;
+        }
+
+        .eq-bar {
+            width: 3px;
+            background: var(--accent-pink);
+            border-radius: 2px;
+            animation: eq-pulse 0.7s infinite alternate ease-in-out;
+        }
+
+        .eq-bar:nth-child(1) { animation-delay: 0.1s; height: 50%; }
+        .eq-bar:nth-child(2) { animation-delay: 0.3s; height: 100%; }
+        .eq-bar:nth-child(3) { animation-delay: 0.2s; height: 35%; }
+        .eq-bar:nth-child(4) { animation-delay: 0.4s; height: 80%; }
+
+        @keyframes eq-pulse {
+            0% { height: 20%; }
+            100% { height: 100%; }
+        }
+
         .tab-group {
             display: flex;
             gap: 0.5rem;
@@ -983,16 +1029,13 @@ def home():
         .output-viewport ul, .output-viewport ol { padding-left: 1.5rem; margin: 0.8rem 0; }
         .output-viewport li { margin-bottom: 0.4rem; }
 
-        /* Export Dock */
         .export-dock {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 0.75rem;
         }
 
-        @media (max-width: 640px) {
-            .export-dock { grid-template-columns: repeat(2, 1fr); }
-        }
+        @media (max-width: 640px) { .export-dock { grid-template-columns: repeat(2, 1fr); } }
 
         .export-card {
             background: rgba(15, 23, 42, 0.8);
@@ -1020,12 +1063,8 @@ def home():
             box-shadow: 0 6px 18px var(--primary-glow);
         }
 
-        .export-card.disabled {
-            opacity: 0.35;
-            pointer-events: none;
-        }
+        .export-card.disabled { opacity: 0.35; pointer-events: none; }
 
-        /* Footer */
         footer {
             text-align: center;
             padding: 1.75rem;
@@ -1035,7 +1074,6 @@ def home():
             background: rgba(5, 8, 17, 0.95);
         }
 
-        /* Loading Spinner */
         .spin { animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
@@ -1055,14 +1093,12 @@ def home():
             </a>
 
             <div class="header-actions">
-                <!-- Interactive Key Badge Button -->
                 <button id="keyBadgeBtn" class="key-badge-btn missing" onclick="openKeyModal()">
                     <span class="pulse-dot"></span>
                     <span id="keyBadgeText">Checking Key...</span>
                     <i class="fa-solid fa-gear" style="font-size: 0.85rem; opacity: 0.7;"></i>
                 </button>
 
-                <!-- Model Selector -->
                 <div class="ctrl-pill" title="Selected Gemini Model">
                     <i class="fa-solid fa-microchip" style="color: var(--accent-purple);"></i>
                     <select id="modelSelect">
@@ -1076,7 +1112,6 @@ def home():
         </div>
     </header>
 
-    <!-- Key Settings Modal -->
     <div id="keyModal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
@@ -1108,7 +1143,6 @@ def home():
     </div>
 
     <main>
-        <!-- Left: Code Input Panel -->
         <section class="workspace-panel">
             <div class="panel-top">
                 <div class="panel-heading"><i class="fa-solid fa-code-commit"></i> Source Code Input</div>
@@ -1130,13 +1164,32 @@ def home():
             </button>
         </section>
 
-        <!-- Right: AI Documentation Hub Panel -->
         <section class="workspace-panel">
             <div class="panel-top">
                 <div class="panel-heading"><i class="fa-solid fa-file-invoice"></i> Documentation Hub</div>
                 <div class="tab-group">
                     <button class="tab-btn active" id="tabRendered" onclick="switchTab('rendered')">Preview</button>
                     <button class="tab-btn" id="tabRaw" onclick="switchTab('raw')">Raw Markdown</button>
+                </div>
+            </div>
+
+            <!-- Voice Explanation Control Bar -->
+            <div id="voiceControlBar" class="voice-control-bar" style="display: none;">
+                <button id="voicePlayBtn" class="btn-voice" onclick="toggleVoiceExplanation()">
+                    <i class="fa-solid fa-volume-high"></i> <span id="voiceBtnText">Voice Explanation</span>
+                </button>
+                <button class="btn-voice-stop" title="Stop Audio" onclick="stopVoiceExplanation()"><i class="fa-solid fa-stop"></i></button>
+                <div class="voice-rate-wrap">
+                    <i class="fa-solid fa-gauge-high" style="font-size: 0.75rem; color: var(--accent-pink);"></i>
+                    <select id="voiceRate" onchange="updateVoiceSettings()">
+                        <option value="0.85">0.85x</option>
+                        <option value="1.0" selected>1.0x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                    </select>
+                </div>
+                <div id="voiceEqualizer" class="voice-equalizer" style="display: none;">
+                    <span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span>
                 </div>
             </div>
 
@@ -1180,13 +1233,13 @@ def home():
         const generateBtn = document.getElementById('generateBtn');
         const outputRendered = document.getElementById('outputRendered');
         const outputRaw = document.getElementById('outputRaw');
+        const voiceControlBar = document.getElementById('voiceControlBar');
         let currentToken = null;
+        let isSpeaking = false;
+        let currentUtterance = null;
 
-        // Restore saved key from localStorage
         const savedKey = localStorage.getItem('neurodocs_gemini_key');
-        if (savedKey) {
-            apiKeyInput.value = savedKey;
-        }
+        if (savedKey) apiKeyInput.value = savedKey;
 
         function openKeyModal() { keyModal.classList.add('open'); }
         function closeKeyModal() { keyModal.classList.remove('open'); }
@@ -1269,7 +1322,6 @@ def home():
             fetchModels();
         }
 
-        // File Drag and Drop
         dropArea.addEventListener('click', () => fileInput.click());
         dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.classList.add('drag-active'); });
         dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-active'));
@@ -1304,6 +1356,88 @@ def home():
             }
         }
 
+        // Voice Explanation Logic
+        function cleanTextForSpeech(text) {
+            return text
+                .replace(/```[\s\S]*?```/g, ' Code snippet omitted. ')
+                .replace(/`([^`]+)`/g, '$1')
+                .replace(/#{1,6}\s+/g, '')
+                .replace(/[*_~]/g, '')
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+                .replace(/\n+/g, '. ');
+        }
+
+        function toggleVoiceExplanation() {
+            if (!('speechSynthesis' in window)) {
+                alert('Voice synthesis is not supported in your browser.');
+                return;
+            }
+
+            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+                window.speechSynthesis.pause();
+                isSpeaking = false;
+                document.getElementById('voiceBtnText').textContent = 'Resume Voice';
+                document.getElementById('voiceEqualizer').style.display = 'none';
+                return;
+            }
+
+            if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+                isSpeaking = true;
+                document.getElementById('voiceBtnText').textContent = 'Pause Voice';
+                document.getElementById('voiceEqualizer').style.display = 'flex';
+                return;
+            }
+
+            const docText = outputRaw.value;
+            if (!docText) return;
+
+            const speechText = cleanTextForSpeech(docText);
+            currentUtterance = new SpeechSynthesisUtterance(speechText);
+            currentUtterance.rate = parseFloat(document.getElementById('voiceRate').value || 1.0);
+
+            const voices = window.speechSynthesis.getVoices();
+            const englishVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Online')));
+            if (englishVoice) currentUtterance.voice = englishVoice;
+
+            currentUtterance.onstart = () => {
+                isSpeaking = true;
+                document.getElementById('voiceBtnText').textContent = 'Pause Voice';
+                document.getElementById('voiceEqualizer').style.display = 'flex';
+            };
+
+            currentUtterance.onend = () => {
+                isSpeaking = false;
+                document.getElementById('voiceBtnText').textContent = 'Voice Explanation';
+                document.getElementById('voiceEqualizer').style.display = 'none';
+            };
+
+            currentUtterance.onerror = () => {
+                isSpeaking = false;
+                document.getElementById('voiceBtnText').textContent = 'Voice Explanation';
+                document.getElementById('voiceEqualizer').style.display = 'none';
+            };
+
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(currentUtterance);
+        }
+
+        function stopVoiceExplanation() {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                isSpeaking = false;
+                document.getElementById('voiceBtnText').textContent = 'Voice Explanation';
+                document.getElementById('voiceEqualizer').style.display = 'none';
+            }
+        }
+
+        function updateVoiceSettings() {
+            if (currentUtterance && window.speechSynthesis.speaking) {
+                stopVoiceExplanation();
+                toggleVoiceExplanation();
+            }
+        }
+
         async function generateDocs() {
             const code = codeEditor.value.trim();
             if (!code) {
@@ -1311,6 +1445,7 @@ def home():
                 return;
             }
 
+            stopVoiceExplanation();
             generateBtn.disabled = true;
             generateBtn.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Analyzing & Generating AI Documentation...`;
 
@@ -1333,6 +1468,7 @@ def home():
 
                 outputRendered.innerHTML = marked.parse(docText);
                 outputRaw.value = docText;
+                voiceControlBar.style.display = 'flex';
 
                 ['Docx', 'Pdf', 'Md', 'Zip'].forEach(fmt => {
                     const card = document.getElementById('btn' + fmt);

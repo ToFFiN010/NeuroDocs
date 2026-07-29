@@ -435,9 +435,59 @@ Source Code:
                     documentation = response.text
                     st.success("✅ Documentation Generated Successfully!")
 
-                st.subheader("📄 Generated Documentation")
-
                 st.markdown(documentation)
+
+                # -----------------------------
+                # Voice Explanation Component
+                # -----------------------------
+                clean_speech = re.sub(r'```[\s\S]*?```', '', documentation)
+                clean_speech = re.sub(r'[#\*_`\-\+]', ' ', clean_speech)
+                clean_speech = escape(clean_speech[:1500].replace('\n', ' '))
+
+                st.components.v1.html(
+                    f"""
+                    <div style="font-family: system-ui, sans-serif; background: #0f172a; padding: 12px 18px; border-radius: 12px; border: 1px solid #334155; display: flex; align-items: center; gap: 12px; color: white;">
+                        <button id="speakBtn" style="background: linear-gradient(135deg, #818cf8, #f472b6); border: none; color: white; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            🔊 Listen Voice Explanation
+                        </button>
+                        <button id="stopBtn" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; padding: 8px 12px; border-radius: 8px; cursor: pointer;">
+                            ⏹️ Stop
+                        </button>
+                        <span style="font-size: 0.85rem; color: #94a3b8;">Click to listen to AI voice summary</span>
+                    </div>
+                    <script>
+                        const text = "{clean_speech}";
+                        const speakBtn = document.getElementById('speakBtn');
+                        const stopBtn = document.getElementById('stopBtn');
+                        speakBtn.addEventListener('click', () => {{
+                            if (!('speechSynthesis' in window)) return alert('Browser does not support Speech Synthesis');
+                            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {{
+                                window.speechSynthesis.pause();
+                                speakBtn.textContent = '▶️ Resume Voice';
+                                return;
+                            }}
+                            if (window.speechSynthesis.paused) {{
+                                window.speechSynthesis.resume();
+                                speakBtn.textContent = '⏸️ Pause Voice';
+                                return;
+                            }}
+                            const utter = new SpeechSynthesisUtterance(text);
+                            utter.rate = 1.0;
+                            utter.onend = () => {{ speakBtn.textContent = '🔊 Listen Voice Explanation'; }};
+                            window.speechSynthesis.cancel();
+                            window.speechSynthesis.speak(utter);
+                            speakBtn.textContent = '⏸️ Pause Voice';
+                        }});
+                        stopBtn.addEventListener('click', () => {{
+                            if ('speechSynthesis' in window) {{
+                                window.speechSynthesis.cancel();
+                                speakBtn.textContent = '🔊 Listen Voice Explanation';
+                            }}
+                        }});
+                    </script>
+                    """,
+                    height=70
+                )
 
                 # -----------------------------
                 # Generate Files
