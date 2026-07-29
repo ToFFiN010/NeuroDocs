@@ -1,7 +1,8 @@
-# Ignore Streamlit entrypoint from Vercel function auto-detection
-app.py
-output/
+# Files ignored during Vercel deployment
 venv/
 Activate.ps1
+output/
 test_out/
 uploads/
+__pycache__/
+*.pyc
