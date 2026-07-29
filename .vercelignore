@@ -1,0 +1,7 @@
+# Ignore Streamlit entrypoint from Vercel function auto-detection
+app.py
+output/
+venv/
+Activate.ps1
+test_out/
+uploads/

@@ -14,39 +14,6 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Preformatte
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 # -----------------------------
-# Vercel Serverless Entrypoint Compatibility
-# -----------------------------
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        html_content = """<!DOCTYPE html>
-<html>
-<head>
-    <title>AI Documentation Generator</title>
-    <style>
-        body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #0f172a; color: white; }
-        .card { background: #1e293b; padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; max-width: 520px; border: 1px solid #334155; }
-        h1 { margin-top: 0; color: #38bdf8; font-size: 1.8rem; }
-        p { line-height: 1.6; color: #94a3b8; margin-bottom: 1.5rem; }
-        .badge { background: #0369a1; color: #e0f2fe; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h1>📄 AI Documentation Generator</h1>
-        <p><span class="badge">Vercel Deployment Active</span></p>
-        <p>This Streamlit app is configured for deployment. Run locally using <code>streamlit run app.py</code> or host on Streamlit Cloud for full interactive UI.</p>
-    </div>
-</body>
-</html>"""
-        self.wfile.write(html_content.encode('utf-8'))
-
-app = handler
-application = handler
-
-# -----------------------------
 # Gemini Configuration & Helpers
 # -----------------------------
 load_dotenv()
