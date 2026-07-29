@@ -18,7 +18,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Temporary in-memory cache for generated documentation downloads (cleared periodically / session-scoped)
+# Temporary in-memory cache for generated documentation downloads
 DOC_CACHE = {}
 
 def get_active_api_key(custom_key=None):
@@ -245,6 +245,36 @@ def generate_pdf_bytes(text):
     bio.seek(0)
     return bio
 
+@app.route('/api/validate-key', methods=['POST'])
+def validate_key():
+    data = request.get_json(silent=True) or {}
+    user_key = data.get('api_key', '').strip()
+    active_key = get_active_api_key(user_key)
+    
+    if not active_key:
+        return jsonify({
+            "valid": False,
+            "message": "No API key configured. Enter a key or configure server GEMINI_API_KEY."
+        }), 400
+    
+    try:
+        genai.configure(api_key=active_key)
+        models = []
+        for m in genai.list_models():
+            if "generateContent" in m.supported_generation_methods:
+                models.append(m.name.replace("models/", ""))
+        return jsonify({
+            "valid": True,
+            "is_custom": bool(user_key),
+            "model_count": len(models),
+            "message": f"API Key Validated! {len(models)} models available."
+        })
+    except Exception as e:
+        return jsonify({
+            "valid": False,
+            "message": f"API Key Validation Error: {str(e)}"
+        }), 400
+
 @app.route('/api/models', methods=['POST'])
 def get_models():
     data = request.get_json(silent=True) or {}
@@ -269,7 +299,7 @@ def generate_docs():
 
     active_key = get_active_api_key(user_key)
     if not active_key:
-        return jsonify({"error": "No Gemini API Key found. Please enter your API key in the top settings bar."}), 400
+        return jsonify({"error": "No Gemini API Key found. Please click 'Key Settings' in the top bar to add your key."}), 400
 
     try:
         genai.configure(api_key=active_key)
@@ -371,62 +401,75 @@ def home():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Documentation Generator — NeuroDocs</title>
-    <meta name="description" content="Generate professional, structured software documentation automatically from your source code using Gemini AI. Export to PDF, DOCX, Markdown, and ZIP.">
+    <title>NeuroDocs AI — Next-Gen Code Documentation Generator</title>
+    <meta name="description" content="Transform source code into high-grade developer documentation instantly using Gemini AI. Export to PDF, DOCX, Markdown & ZIP.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-dark: #090d16;
-            --card-bg: rgba(19, 27, 45, 0.75);
-            --card-border: rgba(255, 255, 255, 0.08);
-            --primary: #38bdf8;
-            --primary-glow: rgba(56, 189, 248, 0.25);
-            --accent: #6366f1;
-            --accent-glow: rgba(99, 102, 241, 0.25);
-            --success: #10b981;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --input-bg: #0f172a;
-            --radius: 14px;
+            --bg-canvas: #050811;
+            --bg-card: rgba(15, 23, 42, 0.75);
+            --bg-card-hover: rgba(30, 41, 59, 0.85);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-glow: rgba(56, 189, 248, 0.3);
+            
+            --primary-cyan: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.35);
+            --accent-purple: #818cf8;
+            --accent-pink: #f472b6;
+            --emerald-green: #34d399;
+            --amber-gold: #fbbf24;
+            
+            --text-heading: #f8fafc;
+            --text-body: #cbd5e1;
+            --text-muted: #64748b;
+            --editor-bg: #090d16;
+            --radius-lg: 18px;
+            --radius-md: 12px;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-canvas);
+            color: var(--text-body);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            overflow-x: hidden;
             background-image: 
-                radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
-                radial-gradient(circle at 85% 85%, rgba(56, 189, 248, 0.12) 0%, transparent 40%);
+                radial-gradient(circle at 10% 10%, rgba(56, 189, 248, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 90% 20%, rgba(129, 140, 248, 0.12) 0%, transparent 45%),
+                radial-gradient(circle at 50% 90%, rgba(244, 114, 182, 0.08) 0%, transparent 50%);
             background-attachment: fixed;
         }
 
-        /* Header */
+        /* Ambient Top Glow Line */
+        .ambient-bar {
+            height: 3px;
+            width: 100%;
+            background: linear-gradient(90deg, var(--primary-cyan), var(--accent-purple), var(--accent-pink));
+            box-shadow: 0 0 12px var(--primary-cyan);
+        }
+
+        /* Header Navigation */
         header {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-bottom: 1px solid var(--card-border);
+            background: rgba(9, 13, 22, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-subtle);
             padding: 1rem 2rem;
             position: sticky;
             top: 0;
             z-index: 100;
         }
 
-        .header-container {
-            max-width: 1400px;
+        .header-wrap {
+            max-width: 1440px;
             margin: 0 auto;
             display: flex;
             justify-content: space-between;
@@ -435,407 +478,593 @@ def home():
             gap: 1rem;
         }
 
-        .logo-group {
+        .brand-logo {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.85rem;
+            text-decoration: none;
         }
 
-        .logo-icon {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            width: 42px;
-            height: 42px;
-            border-radius: 10px;
+        .logo-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary-cyan), var(--accent-purple));
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             color: white;
-            box-shadow: 0 4px 14px var(--primary-glow);
+            box-shadow: 0 0 20px var(--primary-glow);
+            position: relative;
         }
 
-        .logo-text h1 {
-            font-size: 1.35rem;
-            font-weight: 700;
-            background: linear-gradient(to right, #ffffff, var(--primary));
+        .brand-text h1 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #ffffff 30%, var(--primary-cyan));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .logo-text p {
-            font-size: 0.8rem;
+        .brand-text p {
+            font-size: 0.78rem;
             color: var(--text-muted);
+            font-weight: 500;
         }
 
-        .controls-group {
+        .header-actions {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 0.85rem;
             flex-wrap: wrap;
         }
 
-        .input-pill {
-            background: var(--input-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 10px;
-            padding: 0.4rem 0.8rem;
+        /* Sleek Control Pills */
+        .ctrl-pill {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 0.45rem 0.9rem;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.6rem;
             font-size: 0.88rem;
-            transition: all 0.2s;
+            color: var(--text-heading);
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .input-pill:focus-within {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-glow);
+        .ctrl-pill:hover {
+            border-color: var(--primary-cyan);
+            box-shadow: 0 0 15px var(--primary-glow);
+            transform: translateY(-1px);
         }
 
-        .input-pill input, .input-pill select {
+        .ctrl-pill select {
             background: transparent;
             border: none;
-            color: var(--text-main);
+            color: var(--text-heading);
             font-family: inherit;
             font-size: 0.88rem;
+            font-weight: 600;
             outline: none;
+            cursor: pointer;
         }
 
-        .input-pill select option {
-            background: #1e293b;
+        .ctrl-pill select option {
+            background: #0f172a;
             color: white;
         }
 
-        .status-badge {
-            font-size: 0.78rem;
-            font-weight: 600;
-            padding: 0.3rem 0.75rem;
-            border-radius: 20px;
+        /* Pulsing Key Status Badge Button */
+        .key-badge-btn {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 0.5rem 1.1rem;
             display: flex;
             align-items: center;
-            gap: 0.4rem;
+            gap: 0.6rem;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
         }
 
-        .status-badge.active {
-            background: rgba(16, 185, 129, 0.15);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.3);
+        .key-badge-btn.custom {
+            border-color: rgba(52, 211, 153, 0.4);
+            background: rgba(52, 211, 153, 0.08);
+            color: var(--emerald-green);
         }
 
-        .status-badge.warning {
-            background: rgba(245, 158, 11, 0.15);
-            color: #fbbf24;
-            border: 1px solid rgba(245, 158, 11, 0.3);
+        .key-badge-btn.server {
+            border-color: rgba(56, 189, 248, 0.4);
+            background: rgba(56, 189, 248, 0.08);
+            color: var(--primary-cyan);
         }
 
-        /* Main Workspace */
+        .key-badge-btn.missing {
+            border-color: rgba(251, 191, 36, 0.4);
+            background: rgba(251, 191, 36, 0.08);
+            color: var(--amber-gold);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px currentColor;
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0% { opacity: 0.4; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.1); }
+            100% { opacity: 0.4; transform: scale(0.9); }
+        }
+
+        /* Modal Overlay & Card */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(3, 7, 18, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #0f172a;
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            max-width: 540px;
+            width: 100%;
+            padding: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px var(--primary-glow);
+            transform: scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        .modal-overlay.open .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-heading);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .modal-close-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .modal-close-btn:hover { color: white; background: rgba(255, 255, 255, 0.15); }
+
+        .key-input-box {
+            background: var(--editor-bg);
+            border: 1.5px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 1rem 0;
+            transition: border-color 0.2s;
+        }
+
+        .key-input-box:focus-within {
+            border-color: var(--primary-cyan);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        .key-input-box input {
+            background: transparent;
+            border: none;
+            color: var(--text-heading);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.95rem;
+            width: 100%;
+            outline: none;
+        }
+
+        .eye-toggle {
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .eye-toggle:hover { color: var(--primary-cyan); }
+
+        .info-callout {
+            background: rgba(56, 189, 248, 0.06);
+            border-left: 3.5px solid var(--primary-cyan);
+            padding: 0.85rem 1rem;
+            border-radius: 0 10px 10px 0;
+            font-size: 0.85rem;
+            color: var(--text-body);
+            line-height: 1.5;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-callout a {
+            color: var(--primary-cyan);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        /* Buttons */
+        .btn {
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 1.25rem;
+            font-family: inherit;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.25s;
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, var(--primary-cyan), var(--accent-purple));
+            color: white;
+            box-shadow: 0 4px 18px var(--primary-glow);
+        }
+
+        .btn-accent:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px var(--primary-glow);
+            filter: brightness(1.1);
+        }
+
+        .btn-outline {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-heading);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--text-muted);
+        }
+
+        /* Main Workspace Grid */
         main {
-            max-width: 1400px;
+            max-width: 1440px;
             width: 100%;
             margin: 2rem auto;
             padding: 0 1.5rem;
             flex: 1;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
+            gap: 1.75rem;
         }
 
-        @media (max-width: 968px) {
-            main {
-                grid-template-columns: 1fr;
-            }
+        @media (max-width: 1024px) {
+            main { grid-template-columns: 1fr; }
         }
 
-        /* Card Panels */
-        .panel {
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius);
-            padding: 1.5rem;
+        /* Panel Cards */
+        .workspace-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
             display: flex;
             flex-direction: column;
             gap: 1.25rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            transition: border-color 0.3s;
         }
 
-        .panel-header {
+        .panel-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid var(--card-border);
-            padding-bottom: 0.75rem;
+            padding-bottom: 0.85rem;
+            border-bottom: 1px solid var(--border-subtle);
         }
 
-        .panel-title {
-            font-size: 1.1rem;
-            font-weight: 600;
+        .panel-heading {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-heading);
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            color: var(--text-main);
+            gap: 0.6rem;
         }
 
-        .panel-title i {
-            color: var(--primary);
-        }
+        .panel-heading i { color: var(--primary-cyan); }
 
-        /* File Upload Drop Area */
-        .upload-area {
-            border: 2px dashed rgba(56, 189, 248, 0.3);
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 12px;
+        /* Drag & Drop Upload Zone */
+        .drop-zone {
+            border: 2px dashed rgba(56, 189, 248, 0.25);
+            background: rgba(9, 13, 22, 0.6);
+            border-radius: var(--radius-md);
             padding: 1.5rem;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .upload-area:hover, .upload-area.dragover {
-            border-color: var(--primary);
+        .drop-zone:hover, .drop-zone.drag-active {
+            border-color: var(--primary-cyan);
             background: rgba(56, 189, 248, 0.08);
+            box-shadow: 0 0 20px var(--primary-glow);
         }
 
-        .upload-area i {
+        .drop-zone i {
             font-size: 2.2rem;
-            color: var(--primary);
-            margin-bottom: 0.5rem;
+            color: var(--primary-cyan);
+            margin-bottom: 0.6rem;
+            display: inline-block;
+            transition: transform 0.3s;
         }
 
-        .upload-area p {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-        }
+        .drop-zone:hover i { transform: translateY(-4px); }
 
-        .upload-area span {
-            color: var(--primary);
-            font-weight: 600;
-        }
+        .drop-zone p { font-size: 0.92rem; color: var(--text-body); }
+        .drop-zone span { color: var(--primary-cyan); font-weight: 600; }
 
-        /* Code Editor Input */
-        .code-container {
+        /* Code Editor */
+        .editor-wrap {
+            position: relative;
             flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
         }
 
-        textarea.code-editor {
+        textarea.code-area {
             width: 100%;
-            height: 380px;
-            background: var(--input-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 10px;
-            padding: 1rem;
+            height: 420px;
+            background: var(--editor-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 1.2rem;
             color: #e2e8f0;
             font-family: 'Fira Code', monospace;
-            font-size: 0.88rem;
-            line-height: 1.5;
+            font-size: 0.9rem;
+            line-height: 1.6;
             outline: none;
             resize: vertical;
-            transition: border-color 0.2s;
+            transition: all 0.25s;
         }
 
-        textarea.code-editor:focus {
-            border-color: var(--primary);
+        textarea.code-area:focus {
+            border-color: var(--primary-cyan);
             box-shadow: 0 0 0 2px var(--primary-glow);
         }
 
-        /* Action Buttons */
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
+        /* Large Generate Action Button */
+        .btn-generate {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--primary-cyan), var(--accent-purple));
             color: white;
             border: none;
-            border-radius: 10px;
-            padding: 0.85rem 1.5rem;
-            font-family: inherit;
-            font-size: 1rem;
-            font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.6rem;
-            box-shadow: 0 4px 15px var(--primary-glow);
-            transition: all 0.25s;
+            gap: 0.75rem;
+            box-shadow: 0 6px 25px var(--primary-glow);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
         }
 
-        .btn-primary:hover {
+        .btn-generate:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px var(--primary-glow);
-            filter: brightness(1.1);
+            box-shadow: 0 8px 30px var(--primary-glow);
+            filter: brightness(1.15);
         }
 
-        .btn-primary:disabled {
-            opacity: 0.6;
+        .btn-generate:disabled {
+            opacity: 0.65;
             cursor: not-allowed;
             transform: none;
         }
 
-        /* Output View Tabs */
-        .tab-bar {
+        /* Output Tabs & Box */
+        .tab-group {
             display: flex;
             gap: 0.5rem;
-            border-bottom: 1px solid var(--card-border);
-            padding-bottom: 0.5rem;
+            background: rgba(9, 13, 22, 0.7);
+            padding: 0.3rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
         }
 
         .tab-btn {
             background: transparent;
             border: none;
             color: var(--text-muted);
-            padding: 0.4rem 0.9rem;
+            padding: 0.45rem 1rem;
             font-family: inherit;
             font-size: 0.88rem;
-            font-weight: 500;
-            border-radius: 6px;
+            font-weight: 600;
+            border-radius: 7px;
             cursor: pointer;
             transition: all 0.2s;
         }
 
         .tab-btn.active {
-            background: rgba(56, 189, 248, 0.15);
-            color: var(--primary);
+            background: rgba(56, 189, 248, 0.18);
+            color: var(--primary-cyan);
         }
 
-        .output-box {
-            flex: 1;
-            height: 380px;
+        .output-viewport {
+            height: 420px;
             overflow-y: auto;
-            background: var(--input-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 10px;
-            padding: 1.25rem;
-            font-size: 0.92rem;
-            line-height: 1.6;
-            color: #cbd5e1;
+            background: var(--editor-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: var(--text-body);
         }
 
-        /* Markdown Styling inside Output Box */
-        .output-box h1, .output-box h2, .output-box h3 {
-            color: var(--text-main);
-            margin-top: 1.2rem;
-            margin-bottom: 0.6rem;
+        .output-viewport h1, .output-viewport h2, .output-viewport h3 {
+            color: var(--text-heading);
+            margin-top: 1.4rem;
+            margin-bottom: 0.7rem;
+            font-weight: 700;
         }
-        .output-box h1 { font-size: 1.4rem; color: var(--primary); border-bottom: 1px solid var(--card-border); padding-bottom: 0.3rem; }
-        .output-box h2 { font-size: 1.2rem; color: #a5b4fc; }
-        .output-box h3 { font-size: 1.05rem; }
-        .output-box code {
-            background: rgba(255,255,255,0.08);
-            color: #f472b6;
-            padding: 0.15rem 0.4rem;
-            border-radius: 4px;
+        .output-viewport h1 {
+            font-size: 1.5rem;
+            color: var(--primary-cyan);
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 0.5rem;
+        }
+        .output-viewport h2 { font-size: 1.25rem; color: var(--accent-purple); }
+        .output-viewport h3 { font-size: 1.1rem; color: var(--text-heading); }
+        .output-viewport code {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--accent-pink);
+            padding: 0.2rem 0.45rem;
+            border-radius: 6px;
             font-family: 'Fira Code', monospace;
-            font-size: 0.85rem;
+            font-size: 0.86rem;
         }
-        .output-box pre {
-            background: #090d16;
-            padding: 1rem;
-            border-radius: 8px;
+        .output-viewport pre {
+            background: #050811;
+            padding: 1.2rem;
+            border-radius: 10px;
             overflow-x: auto;
-            margin: 0.8rem 0;
-            border: 1px solid var(--card-border);
+            margin: 1rem 0;
+            border: 1px solid var(--border-subtle);
         }
-        .output-box pre code {
-            background: transparent;
-            color: #e2e8f0;
-            padding: 0;
-        }
-        .output-box ul, .output-box ol {
-            padding-left: 1.4rem;
-            margin: 0.6rem 0;
-        }
-        .output-box li { margin-bottom: 0.3rem; }
+        .output-viewport pre code { background: transparent; color: #e2e8f0; padding: 0; }
+        .output-viewport ul, .output-viewport ol { padding-left: 1.5rem; margin: 0.8rem 0; }
+        .output-viewport li { margin-bottom: 0.4rem; }
 
-        /* Downloads Bar */
-        .download-grid {
+        /* Export Dock */
+        .export-dock {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 0.6rem;
+            gap: 0.75rem;
         }
 
-        @media (max-width: 600px) {
-            .download-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+        @media (max-width: 640px) {
+            .export-dock { grid-template-columns: repeat(2, 1fr); }
         }
 
-        .btn-download {
-            background: rgba(30, 41, 59, 0.8);
-            border: 1px solid var(--card-border);
-            color: var(--text-main);
-            padding: 0.6rem 0.8rem;
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 0.85rem;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.4rem;
-            transition: all 0.2s;
+        .export-card {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 0.75rem;
+            text-align: center;
             text-decoration: none;
+            color: var(--text-heading);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            transition: all 0.25s;
         }
 
-        .btn-download:hover {
-            border-color: var(--primary);
+        .export-card i { font-size: 1.4rem; margin-bottom: 0.2rem; }
+        .export-card span { font-size: 0.85rem; font-weight: 600; }
+        .export-card small { font-size: 0.72rem; color: var(--text-muted); }
+
+        .export-card:hover {
+            border-color: var(--primary-cyan);
             background: rgba(56, 189, 248, 0.12);
-            color: var(--primary);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px var(--primary-glow);
         }
 
-        .btn-download.disabled {
-            opacity: 0.4;
+        .export-card.disabled {
+            opacity: 0.35;
             pointer-events: none;
         }
 
         /* Footer */
         footer {
             text-align: center;
-            padding: 1.5rem;
+            padding: 1.75rem;
             color: var(--text-muted);
             font-size: 0.85rem;
-            border-top: 1px solid var(--card-border);
-            background: rgba(9, 13, 22, 0.9);
+            border-top: 1px solid var(--border-subtle);
+            background: rgba(5, 8, 17, 0.95);
         }
 
-        /* Spinner Animation */
-        .spinner {
-            width: 18px;
-            height: 18px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        /* Loading Spinner */
+        .spin { animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <header>
-        <div class="header-container">
-            <div class="logo-group">
-                <div class="logo-icon"><i class="fa-solid fa-file-code"></i></div>
-                <div class="logo-text">
-                    <h1>NeuroDocs AI</h1>
-                    <p>Production AI Documentation Generator</p>
-                </div>
-            </div>
+    <div class="ambient-bar"></div>
 
-            <div class="controls-group">
-                <!-- Visitor API Key Input -->
-                <div class="input-pill" title="Enter your Gemini API key or leave empty to use server default key">
-                    <i class="fa-solid fa-key" style="color: var(--primary);"></i>
-                    <input type="password" id="userApiKey" placeholder="Visitor API Key (Optional)">
+    <header>
+        <div class="header-wrap">
+            <a href="#" class="brand-logo">
+                <div class="logo-box"><i class="fa-solid fa-brain"></i></div>
+                <div class="brand-text">
+                    <h1>NeuroDocs AI</h1>
+                    <p>Documentation Engine v2.0</p>
                 </div>
+            </a>
+
+            <div class="header-actions">
+                <!-- Interactive Key Badge Button -->
+                <button id="keyBadgeBtn" class="key-badge-btn missing" onclick="openKeyModal()">
+                    <span class="pulse-dot"></span>
+                    <span id="keyBadgeText">Checking Key...</span>
+                    <i class="fa-solid fa-gear" style="font-size: 0.85rem; opacity: 0.7;"></i>
+                </button>
 
                 <!-- Model Selector -->
-                <div class="input-pill">
-                    <i class="fa-solid fa-microchip" style="color: var(--accent);"></i>
+                <div class="ctrl-pill" title="Selected Gemini Model">
+                    <i class="fa-solid fa-microchip" style="color: var(--accent-purple);"></i>
                     <select id="modelSelect">
                         <option value="gemini-2.5-flash">gemini-2.5-flash</option>
                         <option value="gemini-2.0-flash">gemini-2.0-flash</option>
@@ -843,78 +1072,108 @@ def home():
                         <option value="gemini-2.5-pro">gemini-2.5-pro</option>
                     </select>
                 </div>
-
-                <!-- API Key Status Badge -->
-                <div id="statusBadge" class="status-badge warning">
-                    <i class="fa-solid fa-circle-dot"></i> Checking Key...
-                </div>
             </div>
         </div>
     </header>
 
-    <main>
-        <!-- Left Panel: Input & Code Upload -->
-        <section class="panel">
-            <div class="panel-header">
-                <div class="panel-title"><i class="fa-solid fa-code"></i> Source Code Input</div>
-                <button class="tab-btn" onclick="loadSampleCode()"><i class="fa-solid fa-wand-magic-sparkles"></i> Load Sample</button>
+    <!-- Key Settings Modal -->
+    <div id="keyModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-key" style="color: var(--primary-cyan);"></i> Gemini API Key Settings</div>
+                <button class="modal-close-btn" onclick="closeKeyModal()"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <div class="upload-area" id="dropArea">
-                <input type="file" id="fileInput" accept=".py,.js,.java,.cpp,.c,.html,.css,.txt" style="display: none;">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
+            <p style="font-size: 0.9rem; color: var(--text-body);">Enter your personal Gemini API Key below. Your key is stored securely in your local browser storage and used for processing requests.</p>
+
+            <div class="key-input-box">
+                <i class="fa-solid fa-lock" style="color: var(--text-muted);"></i>
+                <input type="password" id="userApiKey" placeholder="Paste AIzaSy... key here">
+                <i id="eyeToggle" class="fa-solid fa-eye eye-toggle" onclick="toggleKeyVisibility()"></i>
+            </div>
+
+            <div id="validationAlert" style="display: none; font-size: 0.85rem; padding: 0.6rem 0.8rem; border-radius: 8px; margin-bottom: 1rem;"></div>
+
+            <div class="info-callout">
+                💡 <strong>Don't have a Gemini API key?</strong><br>
+                You can generate a free API Key instantly at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i></a>.
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-outline" style="flex: 1;" onclick="testKeyConnection()"><i class="fa-solid fa-vial"></i> Test Key</button>
+                <button class="btn btn-accent" style="flex: 1;" onclick="saveKeyAndClose()"><i class="fa-solid fa-floppy-disk"></i> Save & Apply</button>
+                <button class="btn btn-outline" onclick="clearVisitorKey()"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <main>
+        <!-- Left: Code Input Panel -->
+        <section class="workspace-panel">
+            <div class="panel-top">
+                <div class="panel-heading"><i class="fa-solid fa-code-commit"></i> Source Code Input</div>
+                <button class="tab-btn" onclick="loadSampleCode()"><i class="fa-solid fa-wand-magic-sparkles"></i> Sample Code</button>
+            </div>
+
+            <div class="drop-zone" id="dropArea">
+                <input type="file" id="fileInput" accept=".py,.js,.java,.cpp,.c,.html,.css,.txt,.go,.rs,.sql" style="display: none;">
+                <i class="fa-solid fa-file-arrow-up"></i>
                 <p>Drag & drop code file here or <span>browse file</span></p>
             </div>
 
-            <div class="code-container">
-                <textarea id="codeEditor" class="code-editor" placeholder="// Paste source code here or upload a file..."></textarea>
+            <div class="editor-wrap">
+                <textarea id="codeEditor" class="code-area" placeholder="// Paste source code here or drop a file..."></textarea>
             </div>
 
-            <button id="generateBtn" class="btn-primary" onclick="generateDocs()">
+            <button id="generateBtn" class="btn-generate" onclick="generateDocs()">
                 <i class="fa-solid fa-bolt"></i> Generate AI Documentation
             </button>
         </section>
 
-        <!-- Right Panel: AI Documentation Output -->
-        <section class="panel">
-            <div class="panel-header">
-                <div class="panel-title"><i class="fa-solid fa-book-open"></i> Generated Documentation</div>
-                <div class="tab-bar">
+        <!-- Right: AI Documentation Hub Panel -->
+        <section class="workspace-panel">
+            <div class="panel-top">
+                <div class="panel-heading"><i class="fa-solid fa-file-invoice"></i> Documentation Hub</div>
+                <div class="tab-group">
                     <button class="tab-btn active" id="tabRendered" onclick="switchTab('rendered')">Preview</button>
                     <button class="tab-btn" id="tabRaw" onclick="switchTab('raw')">Raw Markdown</button>
                 </div>
             </div>
 
-            <div class="output-box" id="outputRendered">
-                <div style="text-align: center; margin-top: 5rem; color: var(--text-muted);">
-                    <i class="fa-solid fa-sparkles" style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--primary);"></i>
-                    <p>Your AI-generated documentation will appear here.</p>
+            <div class="output-viewport" id="outputRendered">
+                <div style="text-align: center; margin-top: 6rem; color: var(--text-muted);">
+                    <i class="fa-solid fa-sparkles" style="font-size: 2.8rem; margin-bottom: 1rem; color: var(--primary-cyan); opacity: 0.8;"></i>
+                    <p style="font-size: 1rem; font-weight: 500;">Ready to generate documentation.</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.4rem;">Upload or paste your code on the left and click Generate.</p>
                 </div>
             </div>
 
-            <textarea id="outputRaw" class="code-editor" style="display: none; height: 380px;" readonly></textarea>
+            <textarea id="outputRaw" class="code-area" style="display: none; height: 420px;" readonly></textarea>
 
-            <!-- Export Buttons -->
             <div>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 500;">EXPORT DOCUMENTATION:</p>
-                <div class="download-grid">
-                    <a id="btnDocx" class="btn-download disabled" href="#"><i class="fa-solid fa-file-word" style="color: #3b82f6;"></i> DOCX</a>
-                    <a id="btnPdf" class="btn-download disabled" href="#"><i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> PDF</a>
-                    <a id="btnMd" class="btn-download disabled" href="#"><i class="fa-solid fa-file-lines" style="color: #10b981;"></i> Markdown</a>
-                    <a id="btnZip" class="btn-download disabled" href="#"><i class="fa-solid fa-file-zipper" style="color: #f59e0b;"></i> ZIP Bundle</a>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.6rem; font-weight: 600; letter-spacing: 0.04em;">INSTANT EXPORTS:</p>
+                <div class="export-dock">
+                    <a id="btnDocx" class="export-card disabled" href="#"><i class="fa-solid fa-file-word" style="color: #3b82f6;"></i><span>DOCX</span><small>Word Format</small></a>
+                    <a id="btnPdf" class="export-card disabled" href="#"><i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i><span>PDF</span><small>Styled Document</small></a>
+                    <a id="btnMd" class="export-card disabled" href="#"><i class="fa-solid fa-file-code" style="color: #10b981;"></i><span>Markdown</span><small>Raw .md</small></a>
+                    <a id="btnZip" class="export-card disabled" href="#"><i class="fa-solid fa-file-zipper" style="color: #f59e0b;"></i><span>ZIP</span><small>All Formats</small></a>
                 </div>
             </div>
         </section>
     </main>
 
     <footer>
-        Developed by Dani Toffin &bull; AI Documentation Generator &bull; Powered by Gemini AI &amp; Vercel Serverless
+        NeuroDocs AI &bull; Production Engine for Vercel Serverless &bull; Developed by Dani Toffin
     </footer>
 
     <script>
         const apiKeyInput = document.getElementById('userApiKey');
+        const keyBadgeBtn = document.getElementById('keyBadgeBtn');
+        const keyBadgeText = document.getElementById('keyBadgeText');
         const modelSelect = document.getElementById('modelSelect');
-        const statusBadge = document.getElementById('statusBadge');
+        const keyModal = document.getElementById('keyModal');
+        const eyeToggle = document.getElementById('eyeToggle');
+        const validationAlert = document.getElementById('validationAlert');
         const codeEditor = document.getElementById('codeEditor');
         const fileInput = document.getElementById('fileInput');
         const dropArea = document.getElementById('dropArea');
@@ -923,18 +1182,24 @@ def home():
         const outputRaw = document.getElementById('outputRaw');
         let currentToken = null;
 
-        // Restore saved visitor API key from localStorage
+        // Restore saved key from localStorage
         const savedKey = localStorage.getItem('neurodocs_gemini_key');
         if (savedKey) {
             apiKeyInput.value = savedKey;
         }
 
-        apiKeyInput.addEventListener('input', () => {
-            localStorage.setItem('neurodocs_gemini_key', apiKeyInput.value.trim());
-            fetchModels();
-        });
+        function openKeyModal() { keyModal.classList.add('open'); }
+        function closeKeyModal() { keyModal.classList.remove('open'); }
+        function toggleKeyVisibility() {
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+                eyeToggle.className = 'fa-solid fa-eye-slash eye-toggle';
+            } else {
+                apiKeyInput.type = 'password';
+                eyeToggle.className = 'fa-solid fa-eye eye-toggle';
+            }
+        }
 
-        // Fetch Gemini Models from Backend
         async function fetchModels() {
             try {
                 const res = await fetch('/api/models', {
@@ -947,53 +1212,84 @@ def home():
                     modelSelect.innerHTML = data.models.map(m => `<option value="${m}">${m}</option>`).join('');
                 }
                 if (data.has_key) {
-                    statusBadge.className = 'status-badge active';
-                    statusBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${data.is_custom ? 'Visitor Key Active' : 'Server Key Active'}`;
+                    if (data.is_custom) {
+                        keyBadgeBtn.className = 'key-badge-btn custom';
+                        keyBadgeText.textContent = 'Visitor Key Active';
+                    } else {
+                        keyBadgeBtn.className = 'key-badge-btn server';
+                        keyBadgeText.textContent = 'Server Key Active';
+                    }
                 } else {
-                    statusBadge.className = 'status-badge warning';
-                    statusBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Key Required`;
+                    keyBadgeBtn.className = 'key-badge-btn missing';
+                    keyBadgeText.textContent = 'Set API Key';
                 }
-            } catch (err) {
-                console.error(err);
-            }
+            } catch (err) { console.error(err); }
         }
         fetchModels();
 
-        // Drag & Drop File Upload
+        async function testKeyConnection() {
+            validationAlert.style.display = 'block';
+            validationAlert.style.background = 'rgba(56, 189, 248, 0.15)';
+            validationAlert.style.color = '#38bdf8';
+            validationAlert.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Testing Key Connection...`;
+
+            try {
+                const res = await fetch('/api/validate-key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ api_key: apiKeyInput.value.trim() })
+                });
+                const data = await res.json();
+                if (data.valid) {
+                    validationAlert.style.background = 'rgba(52, 211, 153, 0.15)';
+                    validationAlert.style.color = '#34d399';
+                    validationAlert.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${data.message}`;
+                } else {
+                    validationAlert.style.background = 'rgba(239, 68, 68, 0.15)';
+                    validationAlert.style.color = '#f87171';
+                    validationAlert.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> ${data.message}`;
+                }
+            } catch (err) {
+                validationAlert.style.background = 'rgba(239, 68, 68, 0.15)';
+                validationAlert.style.color = '#f87171';
+                validationAlert.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> Connection Error.`;
+            }
+        }
+
+        function saveKeyAndClose() {
+            localStorage.setItem('neurodocs_gemini_key', apiKeyInput.value.trim());
+            fetchModels();
+            closeKeyModal();
+        }
+
+        function clearVisitorKey() {
+            apiKeyInput.value = '';
+            localStorage.removeItem('neurodocs_gemini_key');
+            validationAlert.style.display = 'none';
+            fetchModels();
+        }
+
+        // File Drag and Drop
         dropArea.addEventListener('click', () => fileInput.click());
-        dropArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropArea.classList.add('dragover');
-        });
-        dropArea.addEventListener('dragleave', () => dropArea.classList.remove('dragover'));
+        dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.classList.add('drag-active'); });
+        dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-active'));
         dropArea.addEventListener('drop', (e) => {
             e.preventDefault();
-            dropArea.classList.remove('dragover');
-            if (e.dataTransfer.files.length) {
-                handleFile(e.dataTransfer.files[0]);
-            }
+            dropArea.classList.remove('drag-active');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
         });
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) {
-                handleFile(e.target.files[0]);
-            }
-        });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
 
         function handleFile(file) {
             const reader = new FileReader();
-            reader.onload = (e) => {
-                codeEditor.value = e.target.result;
-            };
+            reader.onload = (e) => { codeEditor.value = e.target.result; };
             reader.readAsText(file);
         }
 
         function loadSampleCode() {
-            codeEditor.value = `def calculate_fibonacci(n):\n    \"\"\"Calculates Fibonacci sequence up to n numbers.\"\"\"\n    if n <= 0:\n        return []\n    elif n == 1:\n        return [0]\n    \n    sequence = [0, 1]\n    while len(sequence) < n:\n        sequence.append(sequence[-1] + sequence[-2])\n    return sequence\n\nif __name__ == "__main__":
-    result = calculate_fibonacci(10)
-    print("Fibonacci:", result)`;
+            codeEditor.value = `def calculate_fibonacci(n):\n    \"\"\"Calculates Fibonacci sequence up to n numbers.\"\"\"\n    if n <= 0:\n        return []\n    elif n == 1:\n        return [0]\n    \n    sequence = [0, 1]\n    while len(sequence) < n:\n        sequence.append(sequence[-1] + sequence[-2])\n    return sequence\n\nif __name__ == "__main__":\n    result = calculate_fibonacci(10)\n    print("Fibonacci:", result)`;
         }
 
-        // Tab Switching
         function switchTab(tab) {
             if (tab === 'rendered') {
                 document.getElementById('tabRendered').classList.add('active');
@@ -1008,7 +1304,6 @@ def home():
             }
         }
 
-        // Generate Documentation API Call
         async function generateDocs() {
             const code = codeEditor.value.trim();
             if (!code) {
@@ -1017,7 +1312,7 @@ def home():
             }
 
             generateBtn.disabled = true;
-            generateBtn.innerHTML = `<div class="spinner"></div> Generating Documentation...`;
+            generateBtn.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Analyzing & Generating AI Documentation...`;
 
             try {
                 const res = await fetch('/api/generate', {
@@ -1031,9 +1326,7 @@ def home():
                 });
 
                 const data = await res.json();
-                if (!res.ok) {
-                    throw new Error(data.error || 'Failed to generate documentation.');
-                }
+                if (!res.ok) throw new Error(data.error || 'Generation failed');
 
                 const docText = data.documentation;
                 currentToken = data.token;
@@ -1041,11 +1334,10 @@ def home():
                 outputRendered.innerHTML = marked.parse(docText);
                 outputRaw.value = docText;
 
-                // Enable download links
                 ['Docx', 'Pdf', 'Md', 'Zip'].forEach(fmt => {
-                    const btn = document.getElementById('btn' + fmt);
-                    btn.href = `/api/download/${fmt.toLowerCase()}?token=${currentToken}`;
-                    btn.classList.remove('disabled');
+                    const card = document.getElementById('btn' + fmt);
+                    card.href = `/api/download/${fmt.toLowerCase()}?token=${currentToken}`;
+                    card.classList.remove('disabled');
                 });
 
             } catch (err) {

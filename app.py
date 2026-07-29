@@ -59,9 +59,11 @@ st.write("Upload your source code file and generate professional AI documentatio
 # -----------------------------
 with st.sidebar:
     st.header("🔑 API Key Settings")
+    
+    show_key = st.checkbox("Show API Key", value=False)
     user_api_key = st.text_input(
         "Gemini API Key",
-        type="password",
+        type="default" if show_key else "password",
         help="Enter your own Gemini API key or leave empty to use default server key.",
         placeholder="AIzaSy..."
     )
@@ -72,11 +74,24 @@ with st.sidebar:
     if active_api_key:
         genai.configure(api_key=active_api_key)
         if user_api_key:
-            st.success("Using Visitor API Key", icon="🔑")
+            st.success("🔑 Using Visitor API Key")
         else:
-            st.info("Using Default Server API Key", icon="🌐")
+            st.info("🌐 Using Default Server API Key")
     else:
-        st.warning("⚠️ No Gemini API Key set. Enter your key above.")
+        st.warning("⚠️ No Gemini API Key set.")
+
+    if st.button("🧪 Test API Key"):
+        if active_api_key:
+            try:
+                genai.configure(api_key=active_api_key)
+                test_models = [m.name for m in genai.list_models() if "generateContent" in m.supported_generation_methods]
+                st.success(f"✅ Key Verified! {len(test_models)} models accessible.")
+            except Exception as err:
+                st.error(f"❌ Key Validation Failed: {err}")
+        else:
+            st.error("Please enter an API Key to test.")
+
+    st.markdown("[👉 Get a free Gemini API Key](https://aistudio.google.com/app/apikey)")
 
     st.markdown("---")
     st.header("⚙️ Model Settings")
