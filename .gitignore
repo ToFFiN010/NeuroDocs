@@ -1,0 +1,19 @@
+# Python / Environment
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment variables & secrets
+.env
+
+# Output & Upload directories
+output/
+test_out/
+uploads/
+
+# IDE / OS files
+.DS_Store
+.vscode/
+.idea/
