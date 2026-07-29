@@ -18,10 +18,6 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 # -----------------------------
 load_dotenv()
 
-api_key = os.getenv("GEMINI_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
-
 @st.cache_data(ttl=300)
 def fetch_gemini_models(key):
     """Fetch available models supporting generateContent from the Gemini API."""
@@ -62,9 +58,30 @@ st.write("Upload your source code file and generate professional AI documentatio
 # Sidebar Configuration & Model Selection
 # -----------------------------
 with st.sidebar:
+    st.header("🔑 API Key Settings")
+    user_api_key = st.text_input(
+        "Gemini API Key",
+        type="password",
+        help="Enter your own Gemini API key or leave empty to use default server key.",
+        placeholder="AIzaSy..."
+    )
+
+    env_api_key = os.getenv("GEMINI_API_KEY")
+    active_api_key = user_api_key.strip() if user_api_key else env_api_key
+
+    if active_api_key:
+        genai.configure(api_key=active_api_key)
+        if user_api_key:
+            st.success("Using Visitor API Key", icon="🔑")
+        else:
+            st.info("Using Default Server API Key", icon="🌐")
+    else:
+        st.warning("⚠️ No Gemini API Key set. Enter your key above.")
+
+    st.markdown("---")
     st.header("⚙️ Model Settings")
     
-    available_models = fetch_gemini_models(api_key)
+    available_models = fetch_gemini_models(active_api_key)
     
     default_index = available_models.index("gemini-2.5-flash") if "gemini-2.5-flash" in available_models else 0
     selected_model_name = st.selectbox(
@@ -368,10 +385,11 @@ if uploaded_file is not None:
     st.code(code)
 
     if st.button("🤖 Generate AI Documentation"):
-        if not os.getenv("GEMINI_API_KEY"):
-            st.error("❌ GEMINI_API_KEY is not set. Please add a valid `GEMINI_API_KEY=AIzaSy...` in your `.env` file.")
+        if not active_api_key:
+            st.error("❌ No Gemini API Key provided. Please enter your Gemini API key in the sidebar.")
         else:
             try:
+                genai.configure(api_key=active_api_key)
                 with st.spinner(f"Generating documentation using `{selected_model_name}`..."):
                     model = genai.GenerativeModel(selected_model_name)
                     
