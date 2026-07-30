@@ -78,11 +78,11 @@ with st.sidebar:
     if active_api_key:
         genai.configure(api_key=active_api_key)
         if user_api_key:
-            st.success("🔑 Using Visitor API Key")
+            st.success("🔑 Using Custom Visitor API Key")
         else:
-            st.info("🌐 Using Default Server API Key")
+            st.info("🌐 Free Visitor Access Active (No Key Required)")
     else:
-        st.warning("⚠️ No Gemini API Key set.")
+        st.warning("⚠️ Server key initializing.")
 
     if st.button("🧪 Test API Key"):
         if active_api_key:

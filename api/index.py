@@ -1123,19 +1123,19 @@ def home():
                 <button class="modal-close-btn" onclick="closeKeyModal()"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <p style="font-size: 0.9rem; color: var(--text-body);">Enter your personal Gemini API Key below. Your key is stored securely in your local browser storage and used for processing requests.</p>
+            <p style="font-size: 0.9rem; color: var(--text-body);"><strong>No API key required!</strong> All visitors enjoy free automatic access powered by our server. Entering a personal key below is completely optional.</p>
 
             <div class="key-input-box">
                 <i class="fa-solid fa-lock" style="color: var(--text-muted);"></i>
-                <input type="password" id="userApiKey" placeholder="Paste AIzaSy... key here">
+                <input type="password" id="userApiKey" placeholder="Optional: Paste custom key if desired...">
                 <i id="eyeToggle" class="fa-solid fa-eye eye-toggle" onclick="toggleKeyVisibility()"></i>
             </div>
 
             <div id="validationAlert" style="display: none; font-size: 0.85rem; padding: 0.6rem 0.8rem; border-radius: 8px; margin-bottom: 1rem;"></div>
 
             <div class="info-callout">
-                💡 <strong>Don't have a Gemini API key?</strong><br>
-                You can generate a free API Key instantly at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i></a>.
+                💡 <strong>Free Visitor Access Active:</strong><br>
+                You do not need to enter an API key to generate documentation. If you want your own personal API key limits, generate one at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i></a>.
             </div>
 
             <div class="modal-actions">
@@ -1271,14 +1271,14 @@ def home():
                 if (data.has_key) {
                     if (data.is_custom) {
                         keyBadgeBtn.className = 'key-badge-btn custom';
-                        keyBadgeText.textContent = 'Visitor Key Active';
+                        keyBadgeText.textContent = 'Custom Key Active';
                     } else {
                         keyBadgeBtn.className = 'key-badge-btn server';
-                        keyBadgeText.textContent = 'Server Key Active';
+                        keyBadgeText.textContent = 'Free Access Active';
                     }
                 } else {
-                    keyBadgeBtn.className = 'key-badge-btn missing';
-                    keyBadgeText.textContent = 'Set API Key';
+                    keyBadgeBtn.className = 'key-badge-btn server';
+                    keyBadgeText.textContent = 'Free Access Active';
                 }
             } catch (err) { console.error(err); }
         }
@@ -1363,12 +1363,12 @@ def home():
         // Voice Explanation Logic
         function cleanTextForSpeech(text) {
             return text
-                .replace(/```[\s\S]*?```/g, ' Code snippet omitted. ')
+                .replace(/```[\\s\\S]*?```/g, ' Code snippet omitted. ')
                 .replace(/`([^`]+)`/g, '$1')
-                .replace(/#{1,6}\s+/g, '')
+                .replace(/#{1,6}\\s+/g, '')
                 .replace(/[*_~]/g, '')
-                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-                .replace(/\n+/g, '. ');
+                .replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g, '$1')
+                .replace(/\\n+/g, '. ');
         }
 
         function toggleVoiceExplanation() {
