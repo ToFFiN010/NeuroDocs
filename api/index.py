@@ -509,15 +509,16 @@ def home():
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-canvas: #050811;
-            --bg-card: rgba(15, 23, 42, 0.75);
-            --bg-card-hover: rgba(30, 41, 59, 0.85);
-            --border-subtle: rgba(255, 255, 255, 0.08);
-            --border-glow: rgba(56, 189, 248, 0.3);
+            --bg-canvas: #030712;
+            --bg-card: rgba(15, 23, 42, 0.65);
+            --bg-card-hover: rgba(30, 41, 59, 0.8);
+            --border-subtle: rgba(255, 255, 255, 0.09);
+            --border-glow: rgba(56, 189, 248, 0.35);
             
             --primary-cyan: #38bdf8;
-            --primary-glow: rgba(56, 189, 248, 0.35);
+            --primary-glow: rgba(56, 189, 248, 0.4);
             --accent-purple: #818cf8;
+            --purple-glow: rgba(129, 140, 248, 0.4);
             --accent-pink: #f472b6;
             --emerald-green: #34d399;
             --amber-gold: #fbbf24;
@@ -525,9 +526,9 @@ def home():
             --text-heading: #f8fafc;
             --text-body: #cbd5e1;
             --text-muted: #64748b;
-            --editor-bg: #090d16;
-            --radius-lg: 18px;
-            --radius-md: 12px;
+            --editor-bg: #070b14;
+            --radius-lg: 20px;
+            --radius-md: 14px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -541,9 +542,12 @@ def home():
             flex-direction: column;
             overflow-x: hidden;
             background-image: 
-                radial-gradient(circle at 10% 10%, rgba(56, 189, 248, 0.1) 0%, transparent 40%),
-                radial-gradient(circle at 90% 20%, rgba(129, 140, 248, 0.12) 0%, transparent 45%),
-                radial-gradient(circle at 50% 90%, rgba(244, 114, 182, 0.08) 0%, transparent 50%);
+                radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.12) 0%, transparent 45%),
+                radial-gradient(circle at 85% 25%, rgba(129, 140, 248, 0.14) 0%, transparent 50%),
+                radial-gradient(circle at 50% 85%, rgba(244, 114, 182, 0.1) 0%, transparent 55%),
+                linear-gradient(to right, rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 100% 100%, 40px 40px, 40px 40px;
             background-attachment: fixed;
         }
 
@@ -551,15 +555,15 @@ def home():
             height: 3px;
             width: 100%;
             background: linear-gradient(90deg, var(--primary-cyan), var(--accent-purple), var(--accent-pink));
-            box-shadow: 0 0 12px var(--primary-cyan);
+            box-shadow: 0 0 15px var(--primary-cyan);
         }
 
         header {
-            background: rgba(9, 13, 22, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(7, 11, 20, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border-bottom: 1px solid var(--border-subtle);
-            padding: 1rem 2rem;
+            padding: 0.9rem 2rem;
             position: sticky;
             top: 0;
             z-index: 100;
@@ -1293,6 +1297,26 @@ def home():
             background: rgba(5, 8, 17, 0.95);
         }
 
+        .system-status-ticker {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--border-subtle);
+            padding: 0.4rem 0.9rem;
+            border-radius: 30px;
+            font-size: 0.78rem;
+            color: var(--text-body);
+        }
+
+        .system-status-ticker strong {
+            color: var(--text-heading);
+        }
+
+        @media (max-width: 992px) {
+            .system-status-ticker { display: none; }
+        }
+
         .spin { animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
@@ -1306,10 +1330,18 @@ def home():
             <a href="#" class="brand-logo">
                 <div class="logo-box"><i class="fa-solid fa-brain"></i></div>
                 <div class="brand-text">
-                    <h1>NeuroDocs AI</h1>
-                    <p>Documentation Engine v2.0</p>
+                    <h1>NeuroDocs <span style="font-weight: 300; opacity: 0.85; font-size: 0.9em; background: linear-gradient(135deg, var(--primary-cyan), var(--accent-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">AI</span></h1>
+                    <p><span class="pulse-dot" style="background: var(--emerald-green); width: 6px; height: 6px;"></span> Engine v2.5 &bull; Quantum Edition</p>
                 </div>
             </a>
+
+            <div class="system-status-ticker">
+                <i class="fa-solid fa-shield-halved" style="color: var(--emerald-green);"></i>
+                <span>Status: <strong>Online</strong></span>
+                <span style="opacity: 0.3;">|</span>
+                <i class="fa-solid fa-bolt" style="color: var(--primary-cyan);"></i>
+                <span>Engine: <strong>Free Visitor Access</strong></span>
+            </div>
 
             <div class="header-actions">
                 <button id="userAuthBtn" class="key-badge-btn missing" onclick="openAuthModal()">
