@@ -14,12 +14,25 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Preformatted
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
+import hashlib
+
 load_dotenv()
 
 app = Flask(__name__)
 
 # Temporary in-memory cache for generated documentation downloads
 DOC_CACHE = {}
+
+# In-memory authentication database & active sessions
+USERS_DB = {
+    "demo@neurodocs.ai": {
+        "name": "Dani Toffin",
+        "email": "demo@neurodocs.ai",
+        "password_hash": hashlib.sha256("password123".encode()).hexdigest(),
+        "created_at": "2026-07-30"
+    }
+}
+USER_SESSIONS = {}
 
 def get_active_api_key(custom_key=None):
     if custom_key and custom_key.strip():
@@ -245,9 +258,87 @@ def generate_pdf_bytes(text):
         else:
             story.append(Paragraph(md_to_pdf_html(stripped), body_style))
 
-    doc.build(story)
-    bio.seek(0)
-    return bio
+@app.route('/api/auth/signup', methods=['POST'])
+def auth_signup():
+    data = request.get_json(silent=True) or {}
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    name = data.get('name', '').strip() or email.split('@')[0].capitalize()
+
+    if not email or '@' not in email:
+        return jsonify({"success": False, "message": "Please enter a valid email address."}), 400
+    if not password or len(password) < 6:
+        return jsonify({"success": False, "message": "Password must be at least 6 characters long."}), 400
+
+    if email in USERS_DB:
+        return jsonify({"success": False, "message": "An account with this email already exists."}), 400
+
+    pwd_hash = hashlib.sha256(password.encode()).hexdigest()
+    USERS_DB[email] = {
+        "name": name,
+        "email": email,
+        "password_hash": pwd_hash,
+        "created_at": "2026-07-30"
+    }
+
+    session_token = f"neuro_{uuid.uuid4().hex}"
+    USER_SESSIONS[session_token] = email
+
+    return jsonify({
+        "success": True,
+        "message": f"Welcome to NeuroDocs AI, {name}!",
+        "token": session_token,
+        "user": {"name": name, "email": email}
+    })
+
+@app.route('/api/auth/login', methods=['POST'])
+def auth_login():
+    data = request.get_json(silent=True) or {}
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+
+    if not email or not password:
+        return jsonify({"success": False, "message": "Email and password are required."}), 400
+
+    user = USERS_DB.get(email)
+    if not user:
+        return jsonify({"success": False, "message": "Invalid email or password."}), 401
+
+    pwd_hash = hashlib.sha256(password.encode()).hexdigest()
+    if user["password_hash"] != pwd_hash:
+        return jsonify({"success": False, "message": "Invalid email or password."}), 401
+
+    session_token = f"neuro_{uuid.uuid4().hex}"
+    USER_SESSIONS[session_token] = email
+
+    return jsonify({
+        "success": True,
+        "message": f"Welcome back, {user['name']}!",
+        "token": session_token,
+        "user": {"name": user["name"], "email": user["email"]}
+    })
+
+@app.route('/api/auth/me', methods=['POST'])
+def auth_me():
+    data = request.get_json(silent=True) or {}
+    token = data.get('token', '')
+    email = USER_SESSIONS.get(token)
+
+    if not email or email not in USERS_DB:
+        return jsonify({"authenticated": False})
+
+    user = USERS_DB[email]
+    return jsonify({
+        "authenticated": True,
+        "user": {"name": user["name"], "email": user["email"]}
+    })
+
+@app.route('/api/auth/logout', methods=['POST'])
+def auth_logout():
+    data = request.get_json(silent=True) or {}
+    token = data.get('token', '')
+    USER_SESSIONS.pop(token, None)
+    return jsonify({"success": True, "message": "Logged out successfully."})
 
 @app.route('/api/validate-key', methods=['POST'])
 def validate_key():
@@ -1097,6 +1188,11 @@ def home():
             </a>
 
             <div class="header-actions">
+                <button id="userAuthBtn" class="key-badge-btn missing" onclick="openAuthModal()">
+                    <i class="fa-solid fa-user-gear"></i>
+                    <span id="userAuthText">Sign In</span>
+                </button>
+
                 <button id="keyBadgeBtn" class="key-badge-btn missing" onclick="openKeyModal()">
                     <span class="pulse-dot"></span>
                     <span id="keyBadgeText">Checking Key...</span>
@@ -1141,7 +1237,81 @@ def home():
             <div class="modal-actions">
                 <button class="btn btn-outline" style="flex: 1;" onclick="testKeyConnection()"><i class="fa-solid fa-vial"></i> Test Key</button>
                 <button class="btn btn-accent" style="flex: 1;" onclick="saveKeyAndClose()"><i class="fa-solid fa-floppy-disk"></i> Save & Apply</button>
-                <button class="btn btn-outline" onclick="clearVisitorKey()"><i class="fa-solid fa-trash-can"></i></button>
+    </div>
+
+    <div id="authModal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 480px;">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-user-shield" style="color: var(--primary-cyan);"></i> <span id="authModalTitle">Account Authentication</span></div>
+                <button class="modal-close-btn" onclick="closeAuthModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- Logged In Profile View -->
+            <div id="loggedInView" style="display: none; text-align: center; padding: 1rem 0;">
+                <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-cyan), var(--accent-purple)); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.8rem; color: white; box-shadow: 0 0 20px var(--primary-glow);">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+                <h3 id="profileName" style="color: var(--text-heading); font-size: 1.2rem; font-weight: 700;">Dani Toffin</h3>
+                <p id="profileEmail" style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.2rem;">demo@neurodocs.ai</p>
+                <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid var(--border-glow); padding: 0.75rem; border-radius: 12px; font-size: 0.85rem; color: var(--primary-cyan); margin-bottom: 1.5rem;">
+                    ⚡ <strong>Pro Developer Account Active</strong> &bull; Free Generation Ready
+                </div>
+                <button class="btn btn-outline" style="width: 100%; border-color: rgba(239,68,68,0.4); color: #f87171; justify-content: center;" onclick="logoutUser()">
+                    <i class="fa-solid fa-right-from-bracket"></i> Log Out Account
+                </button>
+            </div>
+
+            <!-- Logged Out Auth View -->
+            <div id="loggedOutView">
+                <div class="tab-group" style="margin-bottom: 1.25rem;">
+                    <button class="tab-btn active" id="authTabLogin" onclick="switchAuthTab('login')">Log In</button>
+                    <button class="tab-btn" id="authTabSignup" onclick="switchAuthTab('signup')">Create Account</button>
+                </div>
+
+                <div id="authAlert" style="display: none; font-size: 0.85rem; padding: 0.6rem 0.8rem; border-radius: 8px; margin-bottom: 1rem;"></div>
+
+                <!-- Login Form -->
+                <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+                    <div class="key-input-box">
+                        <i class="fa-solid fa-envelope" style="color: var(--text-muted);"></i>
+                        <input type="email" id="loginEmail" placeholder="Email (e.g. demo@neurodocs.ai)" required>
+                    </div>
+                    <div class="key-input-box">
+                        <i class="fa-solid fa-lock" style="color: var(--text-muted);"></i>
+                        <input type="password" id="loginPassword" placeholder="Password (e.g. password123)" required>
+                    </div>
+                    <button type="submit" class="btn btn-accent" style="width: 100%; margin-top: 0.75rem; justify-content: center;">
+                        <i class="fa-solid fa-right-to-bracket"></i> Log In
+                    </button>
+                </form>
+
+                <!-- Signup Form -->
+                <form id="signupForm" style="display: none;" onsubmit="handleSignupSubmit(event)">
+                    <div class="key-input-box">
+                        <i class="fa-solid fa-user" style="color: var(--text-muted);"></i>
+                        <input type="text" id="signupName" placeholder="Full Name" required>
+                    </div>
+                    <div class="key-input-box">
+                        <i class="fa-solid fa-envelope" style="color: var(--text-muted);"></i>
+                        <input type="email" id="signupEmail" placeholder="Email address" required>
+                    </div>
+                    <div class="key-input-box">
+                        <i class="fa-solid fa-lock" style="color: var(--text-muted);"></i>
+                        <input type="password" id="signupPassword" placeholder="Password (min 6 characters)" required>
+                    </div>
+                    <button type="submit" class="btn btn-accent" style="width: 100%; margin-top: 0.75rem; justify-content: center;">
+                        <i class="fa-solid fa-user-plus"></i> Create Account
+                    </button>
+                </form>
+
+                <div style="position: relative; margin: 1.25rem 0; text-align: center;">
+                    <hr style="border: none; border-top: 1px solid var(--border-subtle);">
+                    <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #0f172a; padding: 0 10px; font-size: 0.75rem; color: var(--text-muted);">OR</span>
+                </div>
+
+                <button class="btn btn-outline" type="button" style="width: 100%; justify-content: center; border-color: rgba(56, 189, 248, 0.4); color: var(--primary-cyan);" onclick="quickDemoLogin()">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> ⚡ 1-Click Quick Demo Login
+                </button>
             </div>
         </div>
     </div>
@@ -1231,6 +1401,16 @@ def home():
         const keyModal = document.getElementById('keyModal');
         const eyeToggle = document.getElementById('eyeToggle');
         const validationAlert = document.getElementById('validationAlert');
+
+        const authModal = document.getElementById('authModal');
+        const userAuthBtn = document.getElementById('userAuthBtn');
+        const userAuthText = document.getElementById('userAuthText');
+        const loggedInView = document.getElementById('loggedInView');
+        const loggedOutView = document.getElementById('loggedOutView');
+        const authAlert = document.getElementById('authAlert');
+        const profileName = document.getElementById('profileName');
+        const profileEmail = document.getElementById('profileEmail');
+
         const codeEditor = document.getElementById('codeEditor');
         const fileInput = document.getElementById('fileInput');
         const dropArea = document.getElementById('dropArea');
@@ -1247,6 +1427,162 @@ def home():
 
         function openKeyModal() { keyModal.classList.add('open'); }
         function closeKeyModal() { keyModal.classList.remove('open'); }
+
+        function openAuthModal() { authModal.classList.add('open'); }
+        function closeAuthModal() { authModal.classList.remove('open'); }
+
+        function switchAuthTab(tab) {
+            authAlert.style.display = 'none';
+            if (tab === 'login') {
+                document.getElementById('authTabLogin').classList.add('active');
+                document.getElementById('authTabSignup').classList.remove('active');
+                document.getElementById('loginForm').style.display = 'block';
+                document.getElementById('signupForm').style.display = 'none';
+            } else {
+                document.getElementById('authTabSignup').classList.add('active');
+                document.getElementById('authTabLogin').classList.remove('active');
+                document.getElementById('signupForm').style.display = 'block';
+                document.getElementById('loginForm').style.display = 'none';
+            }
+        }
+
+        async function checkAuthSession() {
+            const token = localStorage.getItem('neurodocs_auth_token');
+            if (!token) {
+                renderLoggedOutState();
+                return;
+            }
+            try {
+                const res = await fetch('/api/auth/me', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token })
+                });
+                const data = await res.json();
+                if (data.authenticated && data.user) {
+                    renderLoggedInState(data.user);
+                } else {
+                    renderLoggedOutState();
+                }
+            } catch (err) {
+                renderLoggedOutState();
+            }
+        }
+
+        function renderLoggedInState(user) {
+            userAuthText.textContent = user.name;
+            userAuthBtn.className = 'key-badge-btn custom';
+            profileName.textContent = user.name;
+            profileEmail.textContent = user.email;
+            loggedInView.style.display = 'block';
+            loggedOutView.style.display = 'none';
+        }
+
+        function renderLoggedOutState() {
+            userAuthText.textContent = 'Sign In';
+            userAuthBtn.className = 'key-badge-btn missing';
+            loggedInView.style.display = 'none';
+            loggedOutView.style.display = 'block';
+        }
+
+        async function handleLoginSubmit(e) {
+            e.preventDefault();
+            authAlert.style.display = 'block';
+            authAlert.style.background = 'rgba(56, 189, 248, 0.15)';
+            authAlert.style.color = '#38bdf8';
+            authAlert.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Logging in...`;
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('loginEmail').value,
+                        password: document.getElementById('loginPassword').value
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('neurodocs_auth_token', data.token);
+                    authAlert.style.background = 'rgba(52, 211, 153, 0.15)';
+                    authAlert.style.color = '#34d399';
+                    authAlert.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${data.message}`;
+                    setTimeout(() => {
+                        renderLoggedInState(data.user);
+                        closeAuthModal();
+                    }, 600);
+                } else {
+                    authAlert.style.background = 'rgba(239, 68, 68, 0.15)';
+                    authAlert.style.color = '#f87171';
+                    authAlert.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> ${data.message}`;
+                }
+            } catch (err) {
+                authAlert.style.background = 'rgba(239, 68, 68, 0.15)';
+                authAlert.style.color = '#f87171';
+                authAlert.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> Login request failed.`;
+            }
+        }
+
+        async function handleSignupSubmit(e) {
+            e.preventDefault();
+            authAlert.style.display = 'block';
+            authAlert.style.background = 'rgba(56, 189, 248, 0.15)';
+            authAlert.style.color = '#38bdf8';
+            authAlert.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Creating account...`;
+
+            try {
+                const res = await fetch('/api/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById('signupName').value,
+                        email: document.getElementById('signupEmail').value,
+                        password: document.getElementById('signupPassword').value
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('neurodocs_auth_token', data.token);
+                    authAlert.style.background = 'rgba(52, 211, 153, 0.15)';
+                    authAlert.style.color = '#34d399';
+                    authAlert.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${data.message}`;
+                    setTimeout(() => {
+                        renderLoggedInState(data.user);
+                        closeAuthModal();
+                    }, 600);
+                } else {
+                    authAlert.style.background = 'rgba(239, 68, 68, 0.15)';
+                    authAlert.style.color = '#f87171';
+                    authAlert.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> ${data.message}`;
+                }
+            } catch (err) {
+                authAlert.style.background = 'rgba(239, 68, 68, 0.15)';
+                authAlert.style.color = '#f87171';
+                authAlert.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> Signup request failed.`;
+            }
+        }
+
+        async function quickDemoLogin() {
+            document.getElementById('loginEmail').value = 'demo@neurodocs.ai';
+            document.getElementById('loginPassword').value = 'password123';
+            handleLoginSubmit(new Event('submit'));
+        }
+
+        async function logoutUser() {
+            const token = localStorage.getItem('neurodocs_auth_token');
+            if (token) {
+                fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token })
+                });
+            }
+            localStorage.removeItem('neurodocs_auth_token');
+            renderLoggedOutState();
+            closeAuthModal();
+        }
+
+        checkAuthSession();
         function toggleKeyVisibility() {
             if (apiKeyInput.type === 'password') {
                 apiKeyInput.type = 'text';
