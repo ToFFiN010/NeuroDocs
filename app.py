@@ -21,18 +21,22 @@ load_dotenv()
 @st.cache_data(ttl=300)
 def fetch_gemini_models(key):
     """Fetch available models supporting generateContent from the Gemini API."""
-    fallback_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-pro"]
+    fallback_models = ["gemini-flash-latest", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-pro-latest"]
     if not key:
         return fallback_models
     try:
         genai.configure(api_key=key)
-        models = []
+        raw_models = []
         for m in genai.list_models():
             if "generateContent" in m.supported_generation_methods:
                 name = m.name.replace("models/", "")
-                models.append(name)
-        if models:
-            return models
+                if not any(bad in name for bad in ["2.5-flash", "2.5-pro", "1.5-flash", "1.5-pro", "antigravity", "lyria", "robotics", "computer-use"]):
+                    raw_models.append(name)
+        ordered = [m for m in fallback_models if m in raw_models]
+        others = [m for m in raw_models if m not in fallback_models]
+        result = ordered + others
+        if result:
+            return result
     except Exception:
         pass
     return fallback_models
@@ -98,7 +102,7 @@ with st.sidebar:
     
     available_models = fetch_gemini_models(active_api_key)
     
-    default_index = available_models.index("gemini-2.5-flash") if "gemini-2.5-flash" in available_models else 0
+    default_index = available_models.index("gemini-flash-latest") if "gemini-flash-latest" in available_models else 0
     selected_model_name = st.selectbox(
         "Select Gemini Model",
         options=available_models,

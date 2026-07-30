@@ -27,18 +27,22 @@ def get_active_api_key(custom_key=None):
     return os.getenv("GEMINI_API_KEY", "").strip()
 
 def fetch_gemini_models(api_key):
-    fallback_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-pro"]
+    fallback_models = ["gemini-flash-latest", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-pro-latest"]
     if not api_key:
         return fallback_models
     try:
         genai.configure(api_key=api_key)
-        models = []
+        raw_models = []
         for m in genai.list_models():
             if "generateContent" in m.supported_generation_methods:
                 name = m.name.replace("models/", "")
-                models.append(name)
-        if models:
-            return models
+                if not any(bad in name for bad in ["2.5-flash", "2.5-pro", "1.5-flash", "1.5-pro", "antigravity", "lyria", "robotics", "computer-use"]):
+                    raw_models.append(name)
+        ordered = [m for m in fallback_models if m in raw_models]
+        others = [m for m in raw_models if m not in fallback_models]
+        result = ordered + others
+        if result:
+            return result
     except Exception:
         pass
     return fallback_models
@@ -291,7 +295,7 @@ def get_models():
 def generate_docs():
     data = request.get_json(silent=True) or {}
     code = data.get('code', '')
-    model_name = data.get('model', 'gemini-2.5-flash')
+    model_name = data.get('model', 'gemini-flash-latest')
     user_key = data.get('api_key', '')
 
     if not code or not code.strip():
@@ -1102,10 +1106,10 @@ def home():
                 <div class="ctrl-pill" title="Selected Gemini Model">
                     <i class="fa-solid fa-microchip" style="color: var(--accent-purple);"></i>
                     <select id="modelSelect">
-                        <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                        <option value="gemini-flash-latest">gemini-flash-latest</option>
                         <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-                        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
-                        <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                        <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
+                        <option value="gemini-pro-latest">gemini-pro-latest</option>
                     </select>
                 </div>
             </div>
