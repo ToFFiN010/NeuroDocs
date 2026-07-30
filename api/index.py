@@ -759,6 +759,45 @@ def home():
         }
         .modal-close-btn:hover { color: white; background: rgba(255, 255, 255, 0.15); }
 
+        /* Auth System UI Enhancements */
+        .auth-tab-bar {
+            display: flex;
+            background: rgba(9, 13, 22, 0.8);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 4px;
+            gap: 4px;
+            margin-bottom: 1.25rem;
+        }
+
+        .auth-tab-btn {
+            flex: 1;
+            padding: 0.6rem;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .auth-tab-btn.active {
+            background: linear-gradient(135deg, var(--primary-cyan), var(--accent-purple));
+            color: white;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+
+        .auth-tab-btn:hover:not(.active) {
+            color: var(--text-heading);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
         .key-input-box {
             background: var(--editor-bg);
             border: 1.5px solid var(--border-subtle);
@@ -1237,12 +1276,16 @@ def home():
             <div class="modal-actions">
                 <button class="btn btn-outline" style="flex: 1;" onclick="testKeyConnection()"><i class="fa-solid fa-vial"></i> Test Key</button>
                 <button class="btn btn-accent" style="flex: 1;" onclick="saveKeyAndClose()"><i class="fa-solid fa-floppy-disk"></i> Save & Apply</button>
+                <button class="btn btn-outline" onclick="clearVisitorKey()"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+        </div>
     </div>
 
+    <!-- Auth Modal -->
     <div id="authModal" class="modal-overlay">
         <div class="modal-card" style="max-width: 480px;">
             <div class="modal-header">
-                <div class="modal-title"><i class="fa-solid fa-user-shield" style="color: var(--primary-cyan);"></i> <span id="authModalTitle">Account Authentication</span></div>
+                <div class="modal-title"><i class="fa-solid fa-user-shield" style="color: var(--primary-cyan);"></i> Account Authentication</div>
                 <button class="modal-close-btn" onclick="closeAuthModal()"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
@@ -1254,7 +1297,7 @@ def home():
                 <h3 id="profileName" style="color: var(--text-heading); font-size: 1.2rem; font-weight: 700;">Dani Toffin</h3>
                 <p id="profileEmail" style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.2rem;">demo@neurodocs.ai</p>
                 <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid var(--border-glow); padding: 0.75rem; border-radius: 12px; font-size: 0.85rem; color: var(--primary-cyan); margin-bottom: 1.5rem;">
-                    ⚡ <strong>Pro Developer Account Active</strong> &bull; Free Generation Ready
+                    ⚡ <strong>Pro Developer Account Active</strong> &bull; Free Generation Enabled
                 </div>
                 <button class="btn btn-outline" style="width: 100%; border-color: rgba(239,68,68,0.4); color: #f87171; justify-content: center;" onclick="logoutUser()">
                     <i class="fa-solid fa-right-from-bracket"></i> Log Out Account
@@ -1263,50 +1306,56 @@ def home():
 
             <!-- Logged Out Auth View -->
             <div id="loggedOutView">
-                <div class="tab-group" style="margin-bottom: 1.25rem;">
-                    <button class="tab-btn active" id="authTabLogin" onclick="switchAuthTab('login')">Log In</button>
-                    <button class="tab-btn" id="authTabSignup" onclick="switchAuthTab('signup')">Create Account</button>
-                </div>
-
-                <div id="authAlert" style="display: none; font-size: 0.85rem; padding: 0.6rem 0.8rem; border-radius: 8px; margin-bottom: 1rem;"></div>
-
-                <!-- Login Form -->
-                <form id="loginForm" onsubmit="handleLoginSubmit(event)">
-                    <div class="key-input-box">
-                        <i class="fa-solid fa-envelope" style="color: var(--text-muted);"></i>
-                        <input type="email" id="loginEmail" placeholder="Email (e.g. demo@neurodocs.ai)" required>
-                    </div>
-                    <div class="key-input-box">
-                        <i class="fa-solid fa-lock" style="color: var(--text-muted);"></i>
-                        <input type="password" id="loginPassword" placeholder="Password (e.g. password123)" required>
-                    </div>
-                    <button type="submit" class="btn btn-accent" style="width: 100%; margin-top: 0.75rem; justify-content: center;">
+                <div class="auth-tab-bar">
+                    <button class="auth-tab-btn active" id="authTabLogin" onclick="switchAuthTab('login')">
                         <i class="fa-solid fa-right-to-bracket"></i> Log In
                     </button>
-                </form>
+                    <button class="auth-tab-btn" id="authTabSignup" onclick="switchAuthTab('signup')">
+                        <i class="fa-solid fa-user-plus"></i> Create Account
+                    </button>
+                </div>
 
-                <!-- Signup Form -->
-                <form id="signupForm" style="display: none;" onsubmit="handleSignupSubmit(event)">
-                    <div class="key-input-box">
-                        <i class="fa-solid fa-user" style="color: var(--text-muted);"></i>
-                        <input type="text" id="signupName" placeholder="Full Name" required>
-                    </div>
+                <div id="authAlert" style="display: none; font-size: 0.85rem; padding: 0.65rem 0.9rem; border-radius: 10px; margin-bottom: 1rem;"></div>
+
+                <!-- Login Container -->
+                <div id="loginFormContainer">
                     <div class="key-input-box">
                         <i class="fa-solid fa-envelope" style="color: var(--text-muted);"></i>
-                        <input type="email" id="signupEmail" placeholder="Email address" required>
+                        <input type="email" id="loginEmail" placeholder="Email address (e.g. demo@neurodocs.ai)" onkeypress="if(event.key==='Enter') submitLogin()">
                     </div>
                     <div class="key-input-box">
                         <i class="fa-solid fa-lock" style="color: var(--text-muted);"></i>
-                        <input type="password" id="signupPassword" placeholder="Password (min 6 characters)" required>
+                        <input type="password" id="loginPassword" placeholder="Password (e.g. password123)" onkeypress="if(event.key==='Enter') submitLogin()">
+                        <i id="loginEyeToggle" class="fa-solid fa-eye eye-toggle" onclick="toggleLoginPasswordVisibility()"></i>
                     </div>
-                    <button type="submit" class="btn btn-accent" style="width: 100%; margin-top: 0.75rem; justify-content: center;">
-                        <i class="fa-solid fa-user-plus"></i> Create Account
+                    <button type="button" class="btn btn-accent" style="width: 100%; margin-top: 0.75rem; justify-content: center;" onclick="submitLogin()">
+                        <i class="fa-solid fa-right-to-bracket"></i> Log In to NeuroDocs
                     </button>
-                </form>
+                </div>
+
+                <!-- Signup Container -->
+                <div id="signupFormContainer" style="display: none;">
+                    <div class="key-input-box">
+                        <i class="fa-solid fa-user" style="color: var(--text-muted);"></i>
+                        <input type="text" id="signupName" placeholder="Full Name" onkeypress="if(event.key==='Enter') submitSignup()">
+                    </div>
+                    <div class="key-input-box">
+                        <i class="fa-solid fa-envelope" style="color: var(--text-muted);"></i>
+                        <input type="email" id="signupEmail" placeholder="Email address" onkeypress="if(event.key==='Enter') submitSignup()">
+                    </div>
+                    <div class="key-input-box">
+                        <i class="fa-solid fa-lock" style="color: var(--text-muted);"></i>
+                        <input type="password" id="signupPassword" placeholder="Password (min 6 characters)" onkeypress="if(event.key==='Enter') submitSignup()">
+                        <i id="signupEyeToggle" class="fa-solid fa-eye eye-toggle" onclick="toggleSignupPasswordVisibility()"></i>
+                    </div>
+                    <button type="button" class="btn btn-accent" style="width: 100%; margin-top: 0.75rem; justify-content: center;" onclick="submitSignup()">
+                        <i class="fa-solid fa-user-plus"></i> Create Free Account
+                    </button>
+                </div>
 
                 <div style="position: relative; margin: 1.25rem 0; text-align: center;">
                     <hr style="border: none; border-top: 1px solid var(--border-subtle);">
-                    <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #0f172a; padding: 0 10px; font-size: 0.75rem; color: var(--text-muted);">OR</span>
+                    <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #0f172a; padding: 0 10px; font-size: 0.75rem; color: var(--text-muted);">QUICK DEMO</span>
                 </div>
 
                 <button class="btn btn-outline" type="button" style="width: 100%; justify-content: center; border-color: rgba(56, 189, 248, 0.4); color: var(--primary-cyan);" onclick="quickDemoLogin()">
@@ -1436,13 +1485,37 @@ def home():
             if (tab === 'login') {
                 document.getElementById('authTabLogin').classList.add('active');
                 document.getElementById('authTabSignup').classList.remove('active');
-                document.getElementById('loginForm').style.display = 'block';
-                document.getElementById('signupForm').style.display = 'none';
+                document.getElementById('loginFormContainer').style.display = 'block';
+                document.getElementById('signupFormContainer').style.display = 'none';
             } else {
                 document.getElementById('authTabSignup').classList.add('active');
                 document.getElementById('authTabLogin').classList.remove('active');
-                document.getElementById('signupForm').style.display = 'block';
-                document.getElementById('loginForm').style.display = 'none';
+                document.getElementById('signupFormContainer').style.display = 'block';
+                document.getElementById('loginFormContainer').style.display = 'none';
+            }
+        }
+
+        function toggleLoginPasswordVisibility() {
+            const pwdInput = document.getElementById('loginPassword');
+            const toggleIcon = document.getElementById('loginEyeToggle');
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                toggleIcon.className = 'fa-solid fa-eye-slash eye-toggle';
+            } else {
+                pwdInput.type = 'password';
+                toggleIcon.className = 'fa-solid fa-eye eye-toggle';
+            }
+        }
+
+        function toggleSignupPasswordVisibility() {
+            const pwdInput = document.getElementById('signupPassword');
+            const toggleIcon = document.getElementById('signupEyeToggle');
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                toggleIcon.className = 'fa-solid fa-eye-slash eye-toggle';
+            } else {
+                pwdInput.type = 'password';
+                toggleIcon.className = 'fa-solid fa-eye eye-toggle';
             }
         }
 
@@ -1485,21 +1558,28 @@ def home():
             loggedOutView.style.display = 'block';
         }
 
-        async function handleLoginSubmit(e) {
-            e.preventDefault();
+        async function submitLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                authAlert.style.display = 'block';
+                authAlert.style.background = 'rgba(239, 68, 68, 0.15)';
+                authAlert.style.color = '#f87171';
+                authAlert.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> Please enter both email and password.`;
+                return;
+            }
+
             authAlert.style.display = 'block';
             authAlert.style.background = 'rgba(56, 189, 248, 0.15)';
             authAlert.style.color = '#38bdf8';
-            authAlert.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Logging in...`;
+            authAlert.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Authenticating...`;
 
             try {
                 const res = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: document.getElementById('loginEmail').value,
-                        password: document.getElementById('loginPassword').value
-                    })
+                    body: JSON.stringify({ email: email, password: password })
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -1510,7 +1590,7 @@ def home():
                     setTimeout(() => {
                         renderLoggedInState(data.user);
                         closeAuthModal();
-                    }, 600);
+                    }, 500);
                 } else {
                     authAlert.style.background = 'rgba(239, 68, 68, 0.15)';
                     authAlert.style.color = '#f87171';
@@ -1523,8 +1603,19 @@ def home():
             }
         }
 
-        async function handleSignupSubmit(e) {
-            e.preventDefault();
+        async function submitSignup() {
+            const name = document.getElementById('signupName').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
+            const password = document.getElementById('signupPassword').value;
+
+            if (!email || !password) {
+                authAlert.style.display = 'block';
+                authAlert.style.background = 'rgba(239, 68, 68, 0.15)';
+                authAlert.style.color = '#f87171';
+                authAlert.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> Please fill in all required fields.`;
+                return;
+            }
+
             authAlert.style.display = 'block';
             authAlert.style.background = 'rgba(56, 189, 248, 0.15)';
             authAlert.style.color = '#38bdf8';
@@ -1534,11 +1625,7 @@ def home():
                 const res = await fetch('/api/auth/signup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: document.getElementById('signupName').value,
-                        email: document.getElementById('signupEmail').value,
-                        password: document.getElementById('signupPassword').value
-                    })
+                    body: JSON.stringify({ name: name, email: email, password: password })
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -1549,7 +1636,7 @@ def home():
                     setTimeout(() => {
                         renderLoggedInState(data.user);
                         closeAuthModal();
-                    }, 600);
+                    }, 500);
                 } else {
                     authAlert.style.background = 'rgba(239, 68, 68, 0.15)';
                     authAlert.style.color = '#f87171';
@@ -1563,9 +1650,10 @@ def home():
         }
 
         async function quickDemoLogin() {
+            switchAuthTab('login');
             document.getElementById('loginEmail').value = 'demo@neurodocs.ai';
             document.getElementById('loginPassword').value = 'password123';
-            handleLoginSubmit(new Event('submit'));
+            submitLogin();
         }
 
         async function logoutUser() {
