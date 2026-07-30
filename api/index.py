@@ -388,6 +388,7 @@ def generate_docs():
     code = data.get('code', '')
     model_name = data.get('model', 'gemini-flash-latest')
     user_key = data.get('api_key', '')
+    sections = data.get('sections', [])
 
     if not code or not code.strip():
         return jsonify({"error": "No source code provided"}), 400
@@ -400,22 +401,25 @@ def generate_docs():
         genai.configure(api_key=active_key)
         model = genai.GenerativeModel(model_name)
 
+        if sections and isinstance(sections, list) and len(sections) > 0:
+            sections_str = "\n".join([f"{idx+1}. {s}" for idx, s in enumerate(sections)])
+        else:
+            sections_str = """1. Project Overview & Purpose
+2. Key Features & Capabilities
+3. Architecture & Structure
+4. Function & Method Descriptions
+5. Class & Data Models
+6. Inputs, Outputs & API Schema
+7. Installation & Setup Guide
+8. Example Usage & Quickstart"""
+
         prompt = f"""
 You are an expert software documentation engineer.
 
 Analyze the following source code and generate detailed professional documentation.
 
-Include the following sections:
-1. Project Overview
-2. Purpose
-3. Features
-4. Technologies Used
-5. Function Description
-6. Class Description
-7. Inputs and Outputs
-8. Installation Guide
-9. Example Usage
-10. Conclusion
+Include the following specific sections:
+{sections_str}
 
 Source Code:
 
@@ -796,6 +800,87 @@ def home():
         .auth-tab-btn:hover:not(.active) {
             color: var(--text-heading);
             background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Generator Column Section Configurator */
+        .generator-config-box {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .config-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-heading);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-chips {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 0.85rem;
+        }
+
+        .chip-item {
+            background: rgba(9, 13, 22, 0.8);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.45rem 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-body);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .chip-item:hover {
+            border-color: var(--primary-cyan);
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .chip-item input[type="checkbox"] {
+            accent-color: var(--primary-cyan);
+            cursor: pointer;
+            width: 14px;
+            height: 14px;
+        }
+
+        .preset-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            border-top: 1px solid var(--border-subtle);
+            padding-top: 0.65rem;
+        }
+
+        .preset-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            color: var(--text-muted);
+            padding: 0.25rem 0.6rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .preset-btn:hover {
+            color: var(--primary-cyan);
+            border-color: var(--primary-cyan);
+            background: rgba(56, 189, 248, 0.1);
         }
 
         .key-input-box {
@@ -1382,6 +1467,30 @@ def home():
                 <textarea id="codeEditor" class="code-area" placeholder="// Paste source code here or drop a file..."></textarea>
             </div>
 
+            <!-- Generator Column Configurator -->
+            <div class="generator-config-box">
+                <div class="config-title">
+                    <i class="fa-solid fa-list-check" style="color: var(--primary-cyan);"></i>
+                    Generator Column &mdash; Select Sections to Generate:
+                </div>
+                <div class="section-chips" id="sectionChipsContainer">
+                    <label class="chip-item"><input type="checkbox" value="Project Overview & Purpose" checked> <span>Overview & Purpose</span></label>
+                    <label class="chip-item"><input type="checkbox" value="Key Features & Capabilities" checked> <span>Features & Capabilities</span></label>
+                    <label class="chip-item"><input type="checkbox" value="Architecture & Code Structure" checked> <span>Architecture & Structure</span></label>
+                    <label class="chip-item"><input type="checkbox" value="Function & Method Descriptions" checked> <span>Functions & Methods</span></label>
+                    <label class="chip-item"><input type="checkbox" value="Class & Data Models" checked> <span>Classes & Models</span></label>
+                    <label class="chip-item"><input type="checkbox" value="Inputs, Outputs & API Schema" checked> <span>Inputs, Outputs & Schema</span></label>
+                    <label class="chip-item"><input type="checkbox" value="Installation & Setup Guide" checked> <span>Installation Guide</span></label>
+                    <label class="chip-item"><input type="checkbox" value="Code Examples & Usage" checked> <span>Usage Examples</span></label>
+                </div>
+                <div class="preset-row">
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">PRESETS:</span>
+                    <button type="button" class="preset-btn" onclick="selectSectionPreset('all')"><i class="fa-solid fa-check-double"></i> Select All</button>
+                    <button type="button" class="preset-btn" onclick="selectSectionPreset('quickstart')"><i class="fa-solid fa-bolt"></i> Quickstart Spec</button>
+                    <button type="button" class="preset-btn" onclick="selectSectionPreset('api')"><i class="fa-solid fa-code"></i> API Reference</button>
+                </div>
+            </div>
+
             <button id="generateBtn" class="btn-generate" onclick="generateDocs()">
                 <i class="fa-solid fa-bolt"></i> Generate AI Documentation
             </button>
@@ -1866,12 +1975,30 @@ def home():
             }
         }
 
+        function selectSectionPreset(preset) {
+            const checkboxes = document.querySelectorAll('#sectionChipsContainer input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                if (preset === 'all') {
+                    cb.checked = true;
+                } else if (preset === 'quickstart') {
+                    cb.checked = ['Project Overview & Purpose', 'Installation & Setup Guide', 'Code Examples & Usage'].includes(cb.value);
+                } else if (preset === 'api') {
+                    cb.checked = ['Function & Method Descriptions', 'Class & Data Models', 'Inputs, Outputs & API Schema'].includes(cb.value);
+                }
+            });
+        }
+
+        authModal.addEventListener('click', (e) => { if (e.target === authModal) closeAuthModal(); });
+        keyModal.addEventListener('click', (e) => { if (e.target === keyModal) closeKeyModal(); });
+
         async function generateDocs() {
             const code = codeEditor.value.trim();
             if (!code) {
                 alert('Please enter or upload source code first.');
                 return;
             }
+
+            const selectedSections = Array.from(document.querySelectorAll('#sectionChipsContainer input[type="checkbox"]:checked')).map(cb => cb.value);
 
             stopVoiceExplanation();
             generateBtn.disabled = true;
@@ -1884,7 +2011,8 @@ def home():
                     body: JSON.stringify({
                         code: code,
                         model: modelSelect.value,
-                        api_key: apiKeyInput.value.trim()
+                        api_key: apiKeyInput.value.trim(),
+                        sections: selectedSections
                     })
                 });
 
