@@ -2668,4 +2668,9 @@ def home():
     return render_template_string(html_template)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    try:
+        from waitress import serve
+        print("Starting Production WSGI Server on http://127.0.0.1:5000 ...")
+        serve(app, host='0.0.0.0', port=5000)
+    except ImportError:
+        app.run(host='0.0.0.0', port=5000, debug=True)
