@@ -1988,11 +1988,23 @@ def home():
         const savedKey = localStorage.getItem('neurodocs_gemini_key');
         if (savedKey) apiKeyInput.value = savedKey;
 
-        function openKeyModal() { keyModal.classList.add('open'); }
-        function closeKeyModal() { keyModal.classList.remove('open'); }
+        function openKeyModal() {
+            const modal = document.getElementById('keyModal');
+            if (modal) modal.classList.add('open');
+        }
+        function closeKeyModal() {
+            const modal = document.getElementById('keyModal');
+            if (modal) modal.classList.remove('open');
+        }
 
-        function openAuthModal() { authModal.classList.add('open'); }
-        function closeAuthModal() { authModal.classList.remove('open'); }
+        function openAuthModal() {
+            const modal = document.getElementById('authModal');
+            if (modal) modal.classList.add('open');
+        }
+        function closeAuthModal() {
+            const modal = document.getElementById('authModal');
+            if (modal) modal.classList.remove('open');
+        }
 
         function switchAuthTab(tab) {
             authAlert.style.display = 'none';
@@ -2585,6 +2597,36 @@ def home():
         const initialHistoryList = getHistoryList();
         const initialBadge = document.getElementById('historyBadgeCount');
         if (initialBadge) initialBadge.textContent = initialHistoryList.length;
+
+        // Global Window Function Bindings
+        window.openAuthModal = openAuthModal;
+        window.closeAuthModal = closeAuthModal;
+        window.openKeyModal = openKeyModal;
+        window.closeKeyModal = closeKeyModal;
+        window.switchViewMode = switchViewMode;
+        window.switchAuthTab = switchAuthTab;
+        window.submitLogin = submitLogin;
+        window.submitSignup = submitSignup;
+        window.quickDemoLogin = quickDemoLogin;
+        window.logoutUser = logoutUser;
+        window.loadSampleCode = loadSampleCode;
+        window.selectSectionPreset = selectSectionPreset;
+        window.generateDocs = generateDocs;
+        window.switchTab = switchTab;
+        window.testKeyConnection = testKeyConnection;
+        window.saveKeyAndClose = saveKeyAndClose;
+        window.clearVisitorKey = clearVisitorKey;
+        window.toggleKeyVisibility = toggleKeyVisibility;
+        window.toggleLoginPasswordVisibility = toggleLoginPasswordVisibility;
+        window.toggleSignupPasswordVisibility = toggleSignupPasswordVisibility;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnAuth = document.getElementById('userAuthBtn');
+            if (btnAuth) btnAuth.addEventListener('click', openAuthModal);
+
+            const btnKey = document.getElementById('keyBadgeBtn');
+            if (btnKey) btnKey.addEventListener('click', openKeyModal);
+        });
     </script>
 </body>
 </html>"""
