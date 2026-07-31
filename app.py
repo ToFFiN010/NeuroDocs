@@ -69,7 +69,7 @@ with st.sidebar:
         "Gemini API Key",
         type="default" if show_key else "password",
         help="Enter your own Gemini API key or leave empty to use default server key.",
-        placeholder="AIzaSy..."
+        placeholder="Enter your Gemini API key..."
     )
 
     env_api_key = os.getenv("GEMINI_API_KEY")
