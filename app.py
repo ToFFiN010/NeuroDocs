@@ -18,10 +18,26 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 # -----------------------------
 load_dotenv()
 
+def try_generate_content(model_name, prompt, key):
+    genai.configure(api_key=key)
+    model = genai.GenerativeModel(model_name)
+    response = model.generate_content(prompt)
+    try:
+        if response.text and response.text.strip():
+            return response.text
+    except Exception:
+        pass
+    if hasattr(response, 'candidates') and response.candidates:
+        parts = response.candidates[0].content.parts
+        txt = "\n".join([p.text for p in parts if hasattr(p, 'text')])
+        if txt.strip():
+            return txt
+    raise ValueError(f"Model '{model_name}' did not return valid text.")
+
 @st.cache_data(ttl=300)
 def fetch_gemini_models(key):
     """Fetch available models supporting generateContent from the Gemini API."""
-    fallback_models = ["gemini-flash-latest", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-pro-latest"]
+    fallback_models = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash-lite", "gemini-pro-latest"]
     if not key:
         return fallback_models
     try:
@@ -30,7 +46,7 @@ def fetch_gemini_models(key):
         for m in genai.list_models():
             if "generateContent" in m.supported_generation_methods:
                 name = m.name.replace("models/", "")
-                if not any(bad in name for bad in ["2.5-flash", "2.5-pro", "1.5-flash", "1.5-pro", "antigravity", "lyria", "robotics", "computer-use"]):
+                if not any(bad in name for bad in ["antigravity", "lyria", "robotics", "computer-use", "tts"]):
                     raw_models.append(name)
         ordered = [m for m in fallback_models if m in raw_models]
         others = [m for m in raw_models if m not in fallback_models]
@@ -419,17 +435,18 @@ if uploaded_file is not None:
             st.error("❌ No Gemini API Key provided. Please enter your Gemini API key in the sidebar.")
         else:
             try:
-                genai.configure(api_key=active_api_key)
-                with st.spinner(f"Generating documentation using `{selected_model_name}`..."):
-                    model = genai.GenerativeModel(selected_model_name)
-                    
-                    prompt = f"""
+                fallback_candidates = [selected_model_name, "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash-lite", "gemini-pro-latest"]
+                models_to_try = []
+                for m in fallback_candidates:
+                    if m and m not in models_to_try:
+                        models_to_try.append(m)
+
+                prompt = f"""
 You are an expert software documentation engineer.
 
 Analyze the following source code and generate detailed professional documentation.
 
 Include the following sections:
-
 1. Project Overview
 2. Purpose
 3. Features
@@ -446,11 +463,29 @@ Source Code:
 {code}
 """
 
-                    response = model.generate_content(prompt)
-                    documentation = response.text
-                    st.success("✅ Documentation Generated Successfully!")
+                documentation = None
+                used_model = selected_model_name
+                last_exception = None
 
-                st.markdown(documentation)
+                with st.spinner(f"Generating documentation using `{selected_model_name}`..."):
+                    for m in models_to_try:
+                        try:
+                            documentation = try_generate_content(m, prompt, active_api_key)
+                            used_model = m
+                            break
+                        except Exception as e:
+                            last_exception = e
+                            continue
+
+                if not documentation:
+                    st.error(f"❌ Generation Error: {last_exception}")
+                else:
+                    if used_model != selected_model_name:
+                        st.warning(f"⚠️ Generated using fallback model `{used_model}` due to rate limits on `{selected_model_name}`.")
+                    else:
+                        st.success("✅ Documentation Generated Successfully!")
+
+                    st.markdown(documentation)
 
                 # -----------------------------
                 # Voice Explanation Component

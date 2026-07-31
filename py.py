@@ -1,9 +1,16 @@
 import os
+from dotenv import load_dotenv
 import google.generativeai as genai
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-2.5-flash")
+load_dotenv()
 
+key = os.getenv("GEMINI_API_KEY", "").strip()
+if not key:
+    print("Warning: GEMINI_API_KEY not set in environment.")
+
+genai.configure(api_key=key)
+
+models_to_try = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-pro-latest"]
 code = "print('Hello World')"
 
 prompt = f"""
@@ -21,6 +28,20 @@ Source Code:
 
 {code}
 """
-response = model.generate_content(prompt)
-print(response.text)
 
+documentation = None
+for m in models_to_try:
+    try:
+        model = genai.GenerativeModel(m)
+        res = model.generate_content(prompt)
+        if res.text:
+            documentation = res.text
+            print(f"--- Generated using {m} ---")
+            break
+    except Exception as e:
+        continue
+
+if documentation:
+    print(documentation)
+else:
+    print("Could not generate documentation with available models.")
