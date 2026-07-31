@@ -2232,13 +2232,63 @@ def home():
                 }
             } catch (err) { console.error(err); }
         }
-        fetchModels();
+           function showToast(message, type = 'info') {
+            let container = document.getElementById('toastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toastContainer';
+                container.style.cssText = 'position: fixed; top: 24px; right: 24px; z-index: 999999; display: flex; flex-direction: column; gap: 12px; max-width: 440px; pointer-events: none;';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            let bg, border, icon, iconColor;
+
+            if (type === 'error') {
+                bg = 'rgba(15, 23, 42, 0.95)';
+                border = 'rgba(239, 68, 68, 0.6)';
+                icon = 'fa-circle-xmark';
+                iconColor = '#f87171';
+            } else if (type === 'warning') {
+                bg = 'rgba(15, 23, 42, 0.95)';
+                border = 'rgba(245, 158, 11, 0.6)';
+                icon = 'fa-triangle-exclamation';
+                iconColor = '#fbbf24';
+            } else if (type === 'success') {
+                bg = 'rgba(15, 23, 42, 0.95)';
+                border = 'rgba(52, 211, 153, 0.6)';
+                icon = 'fa-circle-check';
+                iconColor = '#34d399';
+            } else {
+                bg = 'rgba(15, 23, 42, 0.95)';
+                border = 'rgba(56, 189, 248, 0.6)';
+                icon = 'fa-circle-info';
+                iconColor = '#38bdf8';
+            }
+
+            toast.style.cssText = `background: ${bg}; border: 1px solid ${border}; color: #f8fafc; padding: 14px 20px; border-radius: 14px; font-size: 0.9rem; font-weight: 600; box-shadow: 0 12px 35px rgba(0,0,0,0.6), 0 0 20px ${border}; display: flex; align-items: center; gap: 12px; opacity: 0; transform: translateX(50px) scale(0.95); transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); pointer-events: auto; backdrop-filter: blur(16px);`;
+            toast.innerHTML = `<i class="fa-solid ${icon}" style="color: ${iconColor}; font-size: 1.25rem;"></i> <span style="line-height: 1.4;">${escapeHtml(message)}</span>`;
+
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateX(0) scale(1)';
+            });
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(50px) scale(0.95)';
+                setTimeout(() => toast.remove(), 350);
+            }, 4000);
+        }
 
         async function testKeyConnection() {
             validationAlert.style.display = 'block';
             validationAlert.style.background = 'rgba(56, 189, 248, 0.15)';
             validationAlert.style.color = '#38bdf8';
             validationAlert.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Testing Key Connection...`;
+            showToast('Testing Gemini API key connection...', 'info');
 
             try {
                 const res = await fetch('/api/validate-key', {
@@ -2251,15 +2301,18 @@ def home():
                     validationAlert.style.background = 'rgba(52, 211, 153, 0.15)';
                     validationAlert.style.color = '#34d399';
                     validationAlert.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${data.message}`;
+                    showToast(data.message, 'success');
                 } else {
                     validationAlert.style.background = 'rgba(239, 68, 68, 0.15)';
                     validationAlert.style.color = '#f87171';
                     validationAlert.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> ${data.message}`;
+                    showToast(data.message, 'error');
                 }
             } catch (err) {
                 validationAlert.style.background = 'rgba(239, 68, 68, 0.15)';
                 validationAlert.style.color = '#f87171';
                 validationAlert.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> Connection Error.`;
+                showToast('API Key test failed due to connection error.', 'error');
             }
         }
 
@@ -2267,6 +2320,7 @@ def home():
             localStorage.setItem('neurodocs_gemini_key', apiKeyInput.value.trim());
             fetchModels();
             closeKeyModal();
+            showToast('Custom Gemini API Key saved & applied!', 'success');
         }
 
         function clearVisitorKey() {
@@ -2274,6 +2328,7 @@ def home():
             localStorage.removeItem('neurodocs_gemini_key');
             validationAlert.style.display = 'none';
             fetchModels();
+            showToast('Cleared custom key. Using free visitor access.', 'info');
         }
 
         dropArea.addEventListener('click', () => fileInput.click());
@@ -2294,6 +2349,7 @@ def home():
 
         function loadSampleCode() {
             codeEditor.value = `def calculate_fibonacci(n):\n    \"\"\"Calculates Fibonacci sequence up to n numbers.\"\"\"\n    if n <= 0:\n        return []\n    elif n == 1:\n        return [0]\n    \n    sequence = [0, 1]\n    while len(sequence) < n:\n        sequence.append(sequence[-1] + sequence[-2])\n    return sequence\n\nif __name__ == "__main__":\n    result = calculate_fibonacci(10)\n    print("Fibonacci:", result)`;
+            showToast('Sample Fibonacci code loaded!', 'info');
         }
 
         function switchTab(tab) {
@@ -2403,34 +2459,12 @@ def home():
                     cb.checked = ['Function & Method Descriptions', 'Class & Data Models', 'Inputs, Outputs & API Schema'].includes(cb.value);
                 }
             });
+            const label = preset === 'all' ? 'All Sections' : preset === 'quickstart' ? 'Quickstart Spec' : 'API Reference';
+            showToast(`Preset selected: ${label}`, 'info');
         }
 
         authModal.addEventListener('click', (e) => { if (e.target === authModal) closeAuthModal(); });
         keyModal.addEventListener('click', (e) => { if (e.target === keyModal) closeKeyModal(); });
-
-        function showToast(message, type = 'error') {
-            let container = document.getElementById('toastContainer');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'toastContainer';
-                container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; max-width: 420px;';
-                document.body.appendChild(container);
-            }
-            const toast = document.createElement('div');
-            const isErr = type === 'error';
-            const isWarn = type === 'warning';
-            const bg = isErr ? 'rgba(239, 68, 68, 0.95)' : isWarn ? 'rgba(245, 158, 11, 0.95)' : 'rgba(16, 185, 129, 0.95)';
-            const icon = isErr ? 'fa-circle-xmark' : isWarn ? 'fa-triangle-exclamation' : 'fa-circle-check';
-            toast.style.cssText = `background: ${bg}; color: white; padding: 12px 18px; border-radius: 12px; font-size: 0.88rem; font-weight: 600; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(-10px); transition: all 0.3s ease;`;
-            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${escapeHtml(message)}</span>`;
-            container.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '1'; toast.style.transform = 'translateY(0)'; }, 10);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(-10px)';
-                setTimeout(() => toast.remove(), 300);
-            }, 4500);
-        }
 
         async function generateDocs() {
             const code = codeEditor.value.trim();
@@ -2444,6 +2478,7 @@ def home():
             stopVoiceExplanation();
             generateBtn.disabled = true;
             generateBtn.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Analyzing & Generating AI Documentation...`;
+            showToast('Generating AI Documentation with Gemini...', 'info');
 
             try {
                 const res = await fetch('/api/generate', {
