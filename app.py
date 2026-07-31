@@ -222,6 +222,13 @@ def md_to_pdf_html(line):
     line = re.sub(r'`(.*?)`', r'<font face="Courier" color="#c7254e">\1</font>', line)
     return line
 
+def safe_pdf_paragraph(text, style):
+    try:
+        return Paragraph(text, style)
+    except Exception:
+        clean = escape(re.sub(r'<[^>]+>', '', text))
+        return Paragraph(clean, style)
+
 # -----------------------------
 # Save PDF (Formatted Platypus Layout)
 # -----------------------------
@@ -312,7 +319,7 @@ def save_pdf(text):
         spaceAfter=8
     )
 
-    story = [Paragraph("AI Generated Documentation", title_style), Spacer(1, 10)]
+    story = [safe_pdf_paragraph("AI Generated Documentation", title_style), Spacer(1, 10)]
 
     lines = text.split("\n")
     in_code_block = False
@@ -340,18 +347,22 @@ def save_pdf(text):
             continue
 
         if stripped.startswith("# "):
-            story.append(Paragraph(md_to_pdf_html(stripped[2:]), h1_style))
+            story.append(safe_pdf_paragraph(md_to_pdf_html(stripped[2:]), h1_style))
         elif stripped.startswith("## "):
-            story.append(Paragraph(md_to_pdf_html(stripped[3:]), h2_style))
+            story.append(safe_pdf_paragraph(md_to_pdf_html(stripped[3:]), h2_style))
         elif stripped.startswith("### "):
-            story.append(Paragraph(md_to_pdf_html(stripped[4:]), h3_style))
+            story.append(safe_pdf_paragraph(md_to_pdf_html(stripped[4:]), h3_style))
         elif re.match(r'^[\*\-\+]\s+', stripped):
             content = re.sub(r'^[\*\-\+]\s+', '', stripped)
-            story.append(Paragraph(f"• {md_to_pdf_html(content)}", bullet_style))
+            story.append(safe_pdf_paragraph(f"• {md_to_pdf_html(content)}", bullet_style))
         elif re.match(r'^\d+\.\s+', stripped):
-            story.append(Paragraph(md_to_pdf_html(stripped), bullet_style))
+            story.append(safe_pdf_paragraph(md_to_pdf_html(stripped), bullet_style))
         else:
-            story.append(Paragraph(md_to_pdf_html(stripped), body_style))
+            story.append(safe_pdf_paragraph(md_to_pdf_html(stripped), body_style))
+
+    if in_code_block and code_lines:
+        code_text = escape("\n".join(code_lines))
+        story.append(Preformatted(code_text, code_style))
 
     doc.build(story)
     return filename

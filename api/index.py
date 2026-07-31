@@ -14,6 +14,9 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Preformatted
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
+import zlib
+import base64
+import tempfile
 import hashlib
 
 load_dotenv()
@@ -34,13 +37,39 @@ USERS_DB = {
 }
 USER_SESSIONS = {}
 
+def encode_doc_token(doc_text):
+    try:
+        compressed = zlib.compress(doc_text.encode('utf-8'))
+        return base64.urlsafe_b64encode(compressed).decode('ascii')
+    except Exception:
+        return str(uuid.uuid4())
+
+def decode_doc_token(token):
+    if not token:
+        return None
+    if token in DOC_CACHE:
+        return DOC_CACHE[token]
+    tmp_path = os.path.join(tempfile.gettempdir(), f"neurodoc_{token[:64]}.txt")
+    if os.path.exists(tmp_path):
+        try:
+            with open(tmp_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception:
+            pass
+    try:
+        compressed = base64.urlsafe_b64decode(token.encode('ascii'))
+        return zlib.decompress(compressed).decode('utf-8')
+    except Exception:
+        pass
+    return None
+
 def get_active_api_key(custom_key=None):
     if custom_key and custom_key.strip():
         return custom_key.strip()
     return os.getenv("GEMINI_API_KEY", "").strip()
 
 def fetch_gemini_models(api_key):
-    fallback_models = ["gemini-flash-latest", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-pro-latest"]
+    fallback_models = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash-lite", "gemini-pro-latest"]
     if not api_key:
         return fallback_models
     try:
@@ -49,7 +78,7 @@ def fetch_gemini_models(api_key):
         for m in genai.list_models():
             if "generateContent" in m.supported_generation_methods:
                 name = m.name.replace("models/", "")
-                if not any(bad in name for bad in ["2.5-flash", "2.5-pro", "1.5-flash", "1.5-pro", "antigravity", "lyria", "robotics", "computer-use"]):
+                if not any(bad in name for bad in ["antigravity", "lyria", "robotics", "computer-use", "tts"]):
                     raw_models.append(name)
         ordered = [m for m in fallback_models if m in raw_models]
         others = [m for m in raw_models if m not in fallback_models]
@@ -126,6 +155,13 @@ def generate_docx_bytes(text):
             p = document.add_paragraph()
             add_docx_markdown_run(p, stripped)
 
+    if in_code_block and code_lines:
+        p = document.add_paragraph()
+        p.paragraph_format.left_indent = Inches(0.3)
+        run = p.add_run("\n".join(code_lines))
+        run.font.name = "Consolas"
+        run.font.size = Pt(9.5)
+
     bio = io.BytesIO()
     document.save(bio)
     bio.seek(0)
@@ -139,6 +175,13 @@ def md_to_pdf_html(line):
     line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', line)
     line = re.sub(r'`(.*?)`', r'<font face="Courier" color="#c7254e">\1</font>', line)
     return line
+
+def safe_pdf_paragraph(text, style):
+    try:
+        return Paragraph(text, style)
+    except Exception:
+        clean = escape(re.sub(r'<[^>]+>', '', text))
+        return Paragraph(clean, style)
 
 def generate_pdf_bytes(text):
     bio = io.BytesIO()
@@ -219,7 +262,7 @@ def generate_pdf_bytes(text):
         spaceAfter=8
     )
 
-    story = [Paragraph("AI Generated Documentation", title_style), Spacer(1, 10)]
+    story = [safe_pdf_paragraph("AI Generated Documentation", title_style), Spacer(1, 10)]
     lines = text.split("\n")
     in_code_block = False
     code_lines = []
@@ -245,18 +288,26 @@ def generate_pdf_bytes(text):
             continue
 
         if stripped.startswith("# "):
-            story.append(Paragraph(md_to_pdf_html(stripped[2:]), h1_style))
+            story.append(safe_pdf_paragraph(md_to_pdf_html(stripped[2:]), h1_style))
         elif stripped.startswith("## "):
-            story.append(Paragraph(md_to_pdf_html(stripped[3:]), h2_style))
+            story.append(safe_pdf_paragraph(md_to_pdf_html(stripped[3:]), h2_style))
         elif stripped.startswith("### "):
-            story.append(Paragraph(md_to_pdf_html(stripped[4:]), h3_style))
+            story.append(safe_pdf_paragraph(md_to_pdf_html(stripped[4:]), h3_style))
         elif re.match(r'^[\*\-\+]\s+', stripped):
             content = re.sub(r'^[\*\-\+]\s+', '', stripped)
-            story.append(Paragraph(f"• {md_to_pdf_html(content)}", bullet_style))
+            story.append(safe_pdf_paragraph(f"• {md_to_pdf_html(content)}", bullet_style))
         elif re.match(r'^\d+\.\s+', stripped):
-            story.append(Paragraph(md_to_pdf_html(stripped), bullet_style))
+            story.append(safe_pdf_paragraph(md_to_pdf_html(stripped), bullet_style))
         else:
-            story.append(Paragraph(md_to_pdf_html(stripped), body_style))
+            story.append(safe_pdf_paragraph(md_to_pdf_html(stripped), body_style))
+
+    if in_code_block and code_lines:
+        code_text = escape("\n".join(code_lines))
+        story.append(Preformatted(code_text, code_style))
+
+    doc.build(story)
+    bio.seek(0)
+    return bio
 
 @app.route('/api/auth/signup', methods=['POST'])
 def auth_signup():
@@ -382,29 +433,41 @@ def get_models():
         "is_custom": bool(user_key and user_key.strip())
     })
 
+def try_generate_content(model_name, prompt, api_key):
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(model_name)
+    response = model.generate_content(prompt)
+    try:
+        if response.text and response.text.strip():
+            return response.text
+    except Exception:
+        pass
+    if hasattr(response, 'candidates') and response.candidates:
+        parts = response.candidates[0].content.parts
+        txt = "\n".join([p.text for p in parts if hasattr(p, 'text')])
+        if txt.strip():
+            return txt
+    raise ValueError(f"Model '{model_name}' did not return valid text content.")
+
 @app.route('/api/generate', methods=['POST'])
 def generate_docs():
     data = request.get_json(silent=True) or {}
     code = data.get('code', '')
-    model_name = data.get('model', 'gemini-flash-latest')
+    model_name = data.get('model', 'gemini-2.0-flash')
     user_key = data.get('api_key', '')
     sections = data.get('sections', [])
 
     if not code or not code.strip():
-        return jsonify({"error": "No source code provided"}), 400
+        return jsonify({"error": "Please enter or upload source code first."}), 400
 
     active_key = get_active_api_key(user_key)
     if not active_key:
-        return jsonify({"error": "No Gemini API Key found. Please click 'Key Settings' in the top bar to add your key."}), 400
+        return jsonify({"error": "No Gemini API Key configured. Click 'Key Settings' to enter a key."}), 400
 
-    try:
-        genai.configure(api_key=active_key)
-        model = genai.GenerativeModel(model_name)
-
-        if sections and isinstance(sections, list) and len(sections) > 0:
-            sections_str = "\n".join([f"{idx+1}. {s}" for idx, s in enumerate(sections)])
-        else:
-            sections_str = """1. Project Overview & Purpose
+    if sections and isinstance(sections, list) and len(sections) > 0:
+        sections_str = "\n".join([f"{idx+1}. {s}" for idx, s in enumerate(sections)])
+    else:
+        sections_str = """1. Project Overview & Purpose
 2. Key Features & Capabilities
 3. Architecture & Structure
 4. Function & Method Descriptions
@@ -413,7 +476,7 @@ def generate_docs():
 7. Installation & Setup Guide
 8. Example Usage & Quickstart"""
 
-        prompt = f"""
+    prompt = f"""
 You are an expert software documentation engineer.
 
 Analyze the following source code and generate detailed professional documentation.
@@ -425,25 +488,59 @@ Source Code:
 
 {code}
 """
-        response = model.generate_content(prompt)
-        documentation = response.text
 
-        doc_id = str(uuid.uuid4())
-        DOC_CACHE[doc_id] = documentation
+    fallback_candidates = [model_name, "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash-lite", "gemini-1.5-flash", "gemini-pro-latest"]
+    models_to_try = []
+    for m in fallback_candidates:
+        if m and m not in models_to_try:
+            models_to_try.append(m)
 
-        return jsonify({
-            "success": True,
-            "token": doc_id,
-            "documentation": documentation
-        })
+    documentation = None
+    used_model = model_name
+    last_exception = None
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    for m in models_to_try:
+        try:
+            documentation = try_generate_content(m, prompt, active_key)
+            used_model = m
+            break
+        except Exception as e:
+            last_exception = e
+            continue
 
-@app.route('/api/download/<format_type>', methods=['GET'])
+    if not documentation:
+        err_msg = str(last_exception) if last_exception else "Generation failed"
+        if "ResourceExhausted" in err_msg or "429" in err_msg or "quota" in err_msg.lower():
+            return jsonify({
+                "error": "Gemini API free quota limit reached for this minute. Please wait 30 seconds or click 'Key Settings' in top bar to use your own free key."
+            }), 429
+        return jsonify({"error": err_msg}), 500
+
+    doc_id = encode_doc_token(documentation)
+    DOC_CACHE[doc_id] = documentation
+
+    try:
+        tmp_path = os.path.join(tempfile.gettempdir(), f"neurodoc_{doc_id[:64]}.txt")
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            f.write(documentation)
+    except Exception:
+        pass
+
+    return jsonify({
+        "success": True,
+        "token": doc_id,
+        "model_used": used_model,
+        "is_fallback": (used_model != model_name),
+        "documentation": documentation
+    })
+
+@app.route('/api/download/<format_type>', methods=['GET', 'POST'])
 def download_file(format_type):
     token = request.args.get('token', '')
-    documentation = DOC_CACHE.get(token)
+    if not token and request.is_json:
+        token = (request.get_json(silent=True) or {}).get('token', '')
+
+    documentation = decode_doc_token(token)
 
     if not documentation:
         return "Invalid or expired download token.", 404
@@ -2299,10 +2396,34 @@ def home():
         authModal.addEventListener('click', (e) => { if (e.target === authModal) closeAuthModal(); });
         keyModal.addEventListener('click', (e) => { if (e.target === keyModal) closeKeyModal(); });
 
+        function showToast(message, type = 'error') {
+            let container = document.getElementById('toastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toastContainer';
+                container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; max-width: 420px;';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            const isErr = type === 'error';
+            const isWarn = type === 'warning';
+            const bg = isErr ? 'rgba(239, 68, 68, 0.95)' : isWarn ? 'rgba(245, 158, 11, 0.95)' : 'rgba(16, 185, 129, 0.95)';
+            const icon = isErr ? 'fa-circle-xmark' : isWarn ? 'fa-triangle-exclamation' : 'fa-circle-check';
+            toast.style.cssText = `background: ${bg}; color: white; padding: 12px 18px; border-radius: 12px; font-size: 0.88rem; font-weight: 600; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(-10px); transition: all 0.3s ease;`;
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '1'; toast.style.transform = 'translateY(0)'; }, 10);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4500);
+        }
+
         async function generateDocs() {
             const code = codeEditor.value.trim();
             if (!code) {
-                alert('Please enter or upload source code first.');
+                showToast('Please enter or upload source code first.', 'warning');
                 return;
             }
 
@@ -2330,7 +2451,11 @@ def home():
                 const docText = data.documentation;
                 currentToken = data.token;
 
-                outputRendered.innerHTML = marked.parse(docText);
+                if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+                    outputRendered.innerHTML = marked.parse(docText);
+                } else {
+                    outputRendered.innerText = docText;
+                }
                 outputRaw.value = docText;
                 voiceControlBar.style.display = 'flex';
 
@@ -2340,19 +2465,25 @@ def home():
                     card.classList.remove('disabled');
                 });
 
+                if (data.is_fallback) {
+                    showToast(`Generated using fallback model (${data.model_used}) due to rate limits on selected model.`, 'warning');
+                } else {
+                    showToast('Documentation Generated Successfully!', 'success');
+                }
+
                 // Register into History Library
                 const titleLine = docText.split('\n').find(l => l.trim().startsWith('#')) || '# Software Documentation';
                 addToHistory({
                     id: currentToken,
                     token: currentToken,
                     title: titleLine.replace(/^#+\\s*/, '').trim() || 'Software Documentation',
-                    model: modelSelect.value,
+                    model: data.model_used || modelSelect.value,
                     sectionsCount: selectedSections.length,
                     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 });
 
             } catch (err) {
-                alert('Error: ' + err.message);
+                showToast(err.message, 'error');
             } finally {
                 generateBtn.disabled = false;
                 generateBtn.innerHTML = `<i class="fa-solid fa-bolt"></i> Generate AI Documentation`;
